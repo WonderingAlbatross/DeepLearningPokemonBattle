@@ -1,1 +1,1 @@
-this project is based on poke_env
+This project is based on poke_env
