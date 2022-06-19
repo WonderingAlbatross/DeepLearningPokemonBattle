@@ -33,10 +33,20 @@ print(vc.vectorize("screech"))
 print(vc.vectorize("muddywater"))
 print(vc.vectorize("defog"))
 print(vc.vectorize("partingshot"))
-'''
-#status condition
+
+#status condition v[20]-v[25]
 print(vc.vectorize("bounce"))
 print(vc.vectorize("toxic"))
 print(vc.vectorize("firefang"))
 print(vc.vectorize("triattack"))
 
+# heal and recoil: self% v[26] damage% v[27]
+print(vc.vectorize("moonlight"))
+print(vc.vectorize("lifedew"))
+print(vc.vectorize("steelbeam"))
+print(vc.vectorize("oblivionwing"))
+print(vc.vectorize("bravebird"))
+print(vc.vectorize("highjumpkick"))
+print(vc.vectorize("strengthsap"))
+'''
+print(vc.vectorize("nightshade"))
