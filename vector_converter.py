@@ -20,32 +20,43 @@ def vectorize(m):
 		v[2] = move.base_power	
 	if "ohko" in move.entry:
 		v[1] = 10000
+	if move._id == "fling":
+		v[1] = 130
+	if move._id == "beatup":
+		v[1] = 13
+		v[3] = 1
+		v[30] = 5
+	if move._id in ("heavyslam","heatcrash","gyroball","lowkick","reversal","flail"):
+		v[1] = 90
+	if move._id in ("grassknot","electroball"):
+		v[2] = 90
+	if move._id == "facade"
+		v[1] = 140
 
 	v[3] = np.amax(v[1:2]) * 0.04 #std error
-	v[30] = 1
 	if isinstance(move.entry.get("multihit",{}),list):
 		v[3] = np.amax(v[1:2]) * 1.07
 		v[1:3] *= 19/6
-		v[30] = 3
+		v[30] = 2
 	else:
 		if move.entry.get("multihit",{}) == 2:
 			v[3] = np.amax(v[1:2]) * 0.06
 			v[1:3] *= 2
-			v[30] = 2
+			v[30] = 1
 		else:
 			if move.entry.get("multihit",{}) == 3:
 				if move._id == "surgingstrikes":
 					v[3] = np.amax(v[1:2]) * 0.07
 					v[1:3] *= 3
-					v[30] = 3
+					v[30] = 2
 				else:
 					v[3] = np.amax(v[1:2]) * 1.67
 					v[1:3] *= 5.23
-					v[30] = 3
+					v[30] = 2
 
 	v[4] = move.accuracy
 	if move.entry["accuracy"] is True:
-		v[4] = 10
+		v[4] = 6
 	
 	v[5] = move.crit_ratio
 
@@ -132,18 +143,26 @@ def vectorize(m):
 				_status = _secondary.get("status","")
 				_chance = _secondary.get("chance",100)/100
 	
+	
 	if _status == "brn":
 		v[20] = _chance
+		v[89] = -_chance
 	if _status == "frz":
 		v[21] = _chance
+		v[89] = -_chance
 	if _status == "par":
 		v[22] = _chance
+		v[89] = -_chance
 	if _status == "psn":
 		v[23] = _chance
+		v[89] = -_chance
 	if _status == "slp":
 		v[24] = _chance
+		v[89] = -1
+		v[87] = -1
 	if _status == "tox":
 		v[25] = _chance
+		v[89] = -_chance
 
 	if move._id == "triattack":
 		v[20] = 1/15
@@ -156,18 +175,29 @@ def vectorize(m):
 	#self%
 	if "heal" in move.entry and move.entry.get("target",{}) in ("self","allies"):
 		v[26] = move.entry["heal"][0]/move.entry["heal"][1]
-	if move._id in ("synthesis","morningsun","moonlight","shoreup"):
+	if move._id in ("synthesis","morningsun","moonlight"):
 		v[26] = 1/2
-	if "mindBlownRecoil" in move.entry or move._id == "bellydrum":
+		v[83] = 1
+		v[84] = -1
+		v[85] = -1
+		v[86] = -1
+	if move._id == "shoreup":
+		v[26] = 1/2
+		v[85] = 1
+	if "mindBlownRecoil" in move.entry or move._id in ("bellydrum","curse"):
 		v[26] = -1/2
 	if move._id == "substitute":
 		v[26] = -1/4
 	if move._id == "clangoroussoul":
 		v[26] = -1/3
+	if "selfdestruct" in move.entry:
+		v[26] = -1
 	
 	#damage%
 	if "drain" in move.entry:
 		v[27] = move.entry["drain"][0]/move.entry["drain"][1]
+	if move._id == "painsplit": 
+		v[27] = 1
 	if "recoil" in move.entry:
 		v[27] = -move.entry["recoil"][0]/move.entry["recoil"][1]
 	# highjumpkick
@@ -209,12 +239,14 @@ def vectorize(m):
 		v[44] = 1
 	if move._id == "endure":
 		v[45] = 1
-	if move._id in ("protect","detect","spikyshield","banefulbunker"):
+	if move._id in ("protect","detect","spikyshield","banefulbunker","craftyshield"):
 		v[46] = 1
 	if "breaksProtect" in move.entry:
 		v[47] = 1
-	if "selfdestruct" in move.entry:
+	if move._id == "painsplit": 
 		v[48] = 1
+	if move._id == "endeavor": 
+		v[48] = 2
 	if "ignoreDefensive" in move.entry:
 		v[49] = 1
 	if "isFutureMove" in move.entry:
@@ -231,16 +263,158 @@ def vectorize(m):
 		if move.entry["damage"] == "level":
 			v[53] = level
 		else:
-			v[54] = move.entry["damage"]
-
+			v[53] = move.entry["damage"]
+	if move._id == "finalgambit":
+		v[53] = 2*level
 
 	#volatile status
+	_chance = 1
+	_volatilestatus = move.entry.get("volatileStatus","")
+	if move.entry.get("secondary",{}):
+		_volatilestatus = move.entry.get("secondary",{}).get("volatileStatus","")
+		_chance = move.entry.get("secondary",{}).get("chance",100)/100
+	if move.entry.get("secondaries",{}):
+		for _secondary in move.entry.get("secondaries",{}):
+			if _secondary.get("volatileStatus",""):
+				_volatilestatus = _secondary.get("volatileStatus","")
+				_chance = _secondary.get("chance",100)/100
+
+	if _volatilestatus == "flinch":
+		v[54] = _chance
+	if _volatilestatus == "partiallytrapped":
+		v[55] = _chance
+	if _volatilestatus == "confusion":
+		v[56] = _chance
+		v[89] = -_chance
+	if _volatilestatus == "curse":
+		v[57] = _chance
+	if _volatilestatus == "destinybond":
+		v[58] = _chance
+	if _volatilestatus in ("disable","torment","imprison"):
+		v[59] = _chance
+	if _volatilestatus == "encore":
+		v[60] = _chance
+	if _volatilestatus == "focusenergy":
+		v[61] = _chance
+	if _volatilestatus == "leechseed":
+		v[62] = _chance
+	if _volatilestatus == "magnetrise":
+		v[63] = _chance
+	if _volatilestatus == "lockedmove":
+		v[64] = _chance
+	if _volatilestatus == "roost":
+		v[65] = _chance
+	if _volatilestatus == "smackdown":
+		v[66] = _chance
+	if _volatilestatus == "substitute":
+		v[67] = _chance
+	if _volatilestatus == "taunt":
+		v[68] = _chance
+	if _volatilestatus == "yawn":
+		v[69] = _chance
+		v[87] = -1
+
+	#trickroom, tailwind, wall and spikes. ~no one change weather/field by move, so as changing ability, one tag for each is enough
+	if move._id == "auroraveil":
+		v[70] = 1
+		v[71] = 1
+	if move._id == "reflect":
+		v[70] = 1
+	if move._id == "lightscreen":
+		v[71] = 1
+	if move._id == "spikes":
+		v[72] = 1
+	if move._id == "stealthrock":
+		v[73] = 1
+	if move._id == "stickyweb":
+		v[74] = 1
+	if move._id == "toxicspikes":
+		v[75] = 1
+	if move._id == "tailwind":
+		v[76] = 1
+	if move._id == "trickroom":
+		v[77] = 1
+	if move._id == "gravity":
+		v[66] = 1
 
 
-	#weather, room, field, and side
+	if move._id == "rapidspin":
+		v[78] = 1
+	if move._id == "defog":
+		v[79] = 1
+	if "onModifyType" in move.entry:
+		v[80] = 1
 
-	#weather/field correction (type, synthesis, etc)
+	if move._id in ("knockoff","trick","switcheroo"):
+		v[81] = 1
+	if move._id in ("gastroacid","coreenforcer","worryseed","simplebeam","entrainment","skillswap"):
+		v[82] = 1
+
+
+	if "weather" in move.entry:
+		v[83:87] = np.ones(4)*0.5
+	if "field" in move.entry:
+		v[87:91] = np.ones(4)*0.5
+
+	#weather and field adjustment
+	if move.entry.get("type","") == "Fire":
+		v[83] = 1
+		v[84] = -1
+		if move._id == "sunnyday":
+			v[83] == -2
+	if move.entry.get("type","") == "Water":
+		v[83] = -1
+		v[84] = 1
+		if move._id == "raindance":
+			v[84] == -2
+	if move._id == "sandstorm":
+		v[85] == -2
+	if move._id == "hail":
+		v[86] == -2
+	if move._id in ("solarblade","solarbeam"):
+		v[83] = 2
+		v[84] = -1
+		v[85] = -1
+		v[86] = -1
+	if move._id in ("thunder","hurricane"):
+		v[83] = -0.5
+		v[84] = 0.5
+	if move._id == "blizzard":
+		v[86] = 0.5
+	if move._id == "weatherball":
+		v[83:87] = np.ones(4)*2
+
+	if move.entry.get("type","") == "Electric":
+		v[87] = 1
+		if move._id == "risingvoltage": 
+			v[87] = 2
+		if move._id == "electricterrain": 
+			v[87] = -2			
+	if move.entry.get("type","") == "Grass":
+		v[88] = 1
+		if move._id == "grassyglide": 
+			v[88] = 3
+		if move._id == "grassyterrain": 
+			v[88] = -2		
+	if move._id in ("bulldoze","earthquake"): 
+		v[88] = -1		
+	if move.entry.get("type","") == "Dragon":
+		v[89] = -1
+	if move._id == "mistyexplosion":
+		v[89] = 1
+	if move._id == "mistyterrain": 
+		v[89] = -2
+	if move.entry.get("type","") == "Psychic":
+		v[90] = 1
+		if move._id == "expandingforce": 
+			v[90] = 2
+		if move._id == "psychicterrain": 
+			v[90] = -2
+	if v[0] > 0 and move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
+		v[90] = -1
+	if move._id == "terrainpulse":
+		v[87:91] = np.ones(4)*2
 
 
 
-	return v[:52]
+	return v[:91]
