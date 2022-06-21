@@ -50,6 +50,9 @@ class MyPlayer(Player):
         :type split_message: str
         """
         # Battle messages can be multiline
+
+        #print(split_messages,"\n")
+
         if (
             len(split_messages) > 1
             and len(split_messages[1]) > 1
@@ -146,6 +149,10 @@ class MyPlayer(Player):
                     self.logger.critical("Unexpected error message: %s", split_message)
             elif split_message[1] == "turn":
                 battle._parse_message(split_message)
+
+                #do: record damage (also crit) and transmit to building guesser
+
+
                 await self._handle_battle_request(battle)
             elif split_message[1] == "teampreview":
                 battle._parse_message(split_message)
@@ -154,6 +161,8 @@ class MyPlayer(Player):
                 self.logger.warning("Received 'bigerror' message: %s", split_message)
             else:
                 battle._parse_message(split_message)
+
+                
 
 
 
@@ -164,12 +173,25 @@ class MyPlayer(Player):
             print("status:",battle.active_pokemon._status,battle.active_pokemon._status_counter)
             print("boosts:",battle.active_pokemon._boosts)
             print("effects:",battle.active_pokemon._effects)    
-            print("protect_counter:",battle.active_pokemon._protect_counter)         
+            print("protect_counter:",battle.active_pokemon._protect_counter)  
+            self.show_moves(battle.active_pokemon)
         for _mon in battle.team.values():
             if not _mon.active:
                 print(_mon._last_request,battle.active_pokemon._status)
+                self.show_moves(_mon)
 
-    def show_moves(self,battle):
-        if battle.active_pokemon:
-            for _move in battle.active_pokemon._moves.values():
-                print(_move._id,_move._current_pp,vc.vectorize(_move))       
+    def show_moves(self,pokemon):
+        if pokemon._last_request:
+            for _move in pokemon._last_request["moves"]:
+                print(_move,vc.vectorize(Move(_move)))     
+
+    def show_opponent(self,battle): 
+        if battle.opponent_active_pokemon:
+            print("status:",battle.opponent_active_pokemon._status,battle.opponent_active_pokemon._status_counter)
+            print("boosts:",battle.opponent_active_pokemon._boosts)
+            print("effects:",battle.opponent_active_pokemon._effects)    
+            print("protect_counter:",battle.opponent_active_pokemon._protect_counter)
+            print("_item:",battle.opponent_active_pokemon._item)
+            print("_ability:",battle.opponent_active_pokemon._ability)
+            print("_moves:",battle.opponent_active_pokemon._moves)
+

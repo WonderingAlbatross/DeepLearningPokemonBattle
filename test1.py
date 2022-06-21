@@ -33,29 +33,29 @@ class MaxDamagePlayer(MyPlayer):
         battle2=list(player_2._battles.values())[-1]
 
         #print all information
-        
-        print("turn:",battle._turn)
+        '''
+        print("turn:",battle._turn)       
         print("player:")
         self.show_down(battle)
         print("opponent:")
         player_2.show_down(battle2)
         print("field:",battle._fields,battle._weather)
         print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
-        
-        
+        '''
+        #self.show_opponent(battle)
 
         if battle.available_moves and np.random.uniform() < 0.8:
             if np.random.uniform() < 0.75:
                 best_move = max(battle.available_moves, key=lambda move: move.base_power * move.type.damage_multiplier(*battle.opponent_active_pokemon.types) )
             else:
                 best_move = battle.available_moves[int(np.random.uniform() * len(battle.available_moves))]
-            print("move",best_move._id)
+        #    print("move",best_move._id)
             return self.create_order(best_move)
 
         else:
             if battle.available_switches:
                 switch = battle.available_switches[int(np.random.uniform() * len(battle.available_switches))]
-                print("switch",switch._species)
+            #    print("switch",switch._species)
                 return self.create_order(switch)
             else:
                 return self.choose_default_move(battle)
@@ -105,7 +105,7 @@ def teampreview_performance(mon_a, mon_b):
 
 async def main():
     fd=open("test.txt","w")
-#    sys.stdout=fd
+    sys.stdout=fd
 
     max_damage_player_1 = MaxDamagePlayer(
         battle_format="gen8randombattle", max_concurrent_battles=1
