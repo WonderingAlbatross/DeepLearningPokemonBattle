@@ -3,50 +3,54 @@ import vector_converter as vc
 from poke_env.environment.move import Move
 '''
 #priority v[0]
-print(vc.vectorize("bulletpunch"))
+print(vc.move_vectorize("bulletpunch"))
 
 #power and catagory v[1],v[2]
 
 #standard error for multiple-hits v[3]
-print(vc.vectorize("bulletseed"))
-print(vc.vectorize("surgingstrikes"))
-print(vc.vectorize("tripleaxel"))
-print(vc.vectorize("bonemerang"))
+print(vc.move_vectorize("bulletseed"))
+print(vc.move_vectorize("surgingstrikes"))
+print(vc.move_vectorize("tripleaxel"))
+print(vc.move_vectorize("bonemerang"))
 
 #accuracy v[4]
-print(vc.vectorize("magicalleaf"))
-print(vc.vectorize("inferno"))
+print(vc.move_vectorize("magicalleaf"))
+print(vc.move_vectorize("inferno"))
 
 #CT rate (crit_ratio) v[5]
-print(vc.vectorize("crosspoison"))
-print(vc.vectorize("frostbreath"))
+print(vc.move_vectorize("crosspoison"))
+print(vc.move_vectorize("frostbreath"))
 
 #self boost v[6]-v[12]
-print(vc.vectorize("scaleshot"))
-print(vc.vectorize("ancientpower"))
-print(vc.vectorize("dracometeor"))
-print(vc.vectorize("honeclaws"))
-print(vc.vectorize("acupressure"))
+print(vc.move_vectorize("scaleshot"))
+print(vc.move_vectorize("ancientpower"))
+print(vc.move_vectorize("dracometeor"))
+print(vc.move_vectorize("honeclaws"))
+print(vc.move_vectorize("acupressure"))
 
 #enemy boost v[13]-v[19]
-print(vc.vectorize("screech"))
-print(vc.vectorize("muddywater"))
-print(vc.vectorize("defog"))
-print(vc.vectorize("partingshot"))
+print(vc.move_vectorize("screech"))
+print(vc.move_vectorize("muddywater"))
+print(vc.move_vectorize("defog"))
+print(vc.move_vectorize("partingshot"))
 
 #status condition v[20]-v[25]
-print(vc.vectorize("bounce"))
-print(vc.vectorize("toxic"))
-print(vc.vectorize("firefang"))
-print(vc.vectorize("triattack"))
+print(vc.move_vectorize("bounce"))
+print(vc.move_vectorize("toxic"))
+print(vc.move_vectorize("firefang"))
+print(vc.move_vectorize("triattack"))
 
 # heal and recoil: self% v[26] damage% v[27]
-print(vc.vectorize("moonlight"))
-print(vc.vectorize("lifedew"))
-print(vc.vectorize("steelbeam"))
-print(vc.vectorize("oblivionwing"))
-print(vc.vectorize("bravebird"))
-print(vc.vectorize("highjumpkick"))
-print(vc.vectorize("strengthsap"))
+print(vc.move_vectorize("moonlight"))
+print(vc.move_vectorize("lifedew"))
+print(vc.move_vectorize("steelbeam"))
+print(vc.move_vectorize("oblivionwing"))
+print(vc.move_vectorize("bravebird"))
+print(vc.move_vectorize("highjumpkick"))
+print(vc.move_vectorize("strengthsap"))
+
+print(vc.move_vectorize(Move("thunder")))
+
 '''
-print(vc.vectorize("nightshade"))
+
+print(vc.boosts_to_multi(-6))

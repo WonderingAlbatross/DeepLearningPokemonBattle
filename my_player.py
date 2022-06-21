@@ -6,7 +6,7 @@ import asyncio
 import orjson
 import random
 
-import vector_converter as vc
+
 
 from abc import ABC
 from abc import abstractmethod
@@ -41,6 +41,9 @@ from poke_env.teambuilder.teambuilder import Teambuilder
 from poke_env.teambuilder.constant_teambuilder import ConstantTeambuilder
 from poke_env.utils import to_id_str
 
+
+import vector_converter as vc
+from pokemonset import PokemonSet
 
 class MyPlayer(Player):
     async def _handle_battle_message(self, split_messages: List[List[str]]) -> None:
@@ -150,7 +153,7 @@ class MyPlayer(Player):
             elif split_message[1] == "turn":
                 battle._parse_message(split_message)
 
-                #do: record damage (also crit) and transmit to building guesser
+                # todo: record damage (also crit) and transmit to building guesser
 
 
                 await self._handle_battle_request(battle)
@@ -162,28 +165,37 @@ class MyPlayer(Player):
             else:
                 battle._parse_message(split_message)
 
-                
 
 
+    def show_info(self,_mon):
+        ps = PokemonSet(_mon)
+        stats = ps._stats
+        moves = ps._mon._moves
+        ability = ps._mon._ability
+        item = ps._mon._item                        #check used item!
+        print(ps._mon._species,stats,ability,item)
+        print("status:",_mon._status,_mon._status_counter)
+        print(moves)
+        if _mon.active:
+            boosts = list(_mon._boosts.values())
+            acc = boosts.pop(0)
+            eva = boosts.pop(2)
+            boosts.append(acc)
+            boosts.append(eva)
+            print("boosts:",boosts)
+            print("effects:",_mon._effects)    
+            print("protect_counter:",_mon._protect_counter) 
+        
 
 
     def show_down(self,battle):
         if battle.active_pokemon:
-            print(battle.active_pokemon._last_request)
-            print("status:",battle.active_pokemon._status,battle.active_pokemon._status_counter)
-            print("boosts:",battle.active_pokemon._boosts)
-            print("effects:",battle.active_pokemon._effects)    
-            print("protect_counter:",battle.active_pokemon._protect_counter)  
-            self.show_moves(battle.active_pokemon)
+            _mon = battle.active_pokemon
+            self.show_info(_mon)
         for _mon in battle.team.values():
             if not _mon.active:
-                print(_mon._last_request,battle.active_pokemon._status)
-                self.show_moves(_mon)
-
-    def show_moves(self,pokemon):
-        if pokemon._last_request:
-            for _move in pokemon._last_request["moves"]:
-                print(_move,vc.vectorize(Move(_move)))     
+                self.show_info(_mon)
+ 
 
     def show_opponent(self,battle): 
         if battle.opponent_active_pokemon:

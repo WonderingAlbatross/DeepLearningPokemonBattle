@@ -1,16 +1,101 @@
-from poke_env.environment.move import Move
 import numpy as np
 
-level = 80
-def vectorize(m):
-	v = np.zeros(100)
-	if isinstance(m, Move):
-		move = m
+from poke_env.environment.move import Move
+from poke_env.environment.pokemon import Pokemon
+
+from pokemonset import PokemonSet
+
+level = 100
+
+def boosts_to_multi(n):
+	if n > 0:
+		k = 1 + n / 2
 	else:
-		if isinstance(m, str):
-			move = Move(m)             #only for testing!
-		else:
-			return v
+		k = 1 / (1 - n / 2)
+	return k
+
+def pokemon_vectorize(mon:PokemonSet):
+	v = np.zeros(100)
+	ability = mon._mon._ability
+	item = mon._mon._item 
+	v[0:7] = mon._stats
+	_status = mon._mon._status.name
+	if _status == "BRN":
+		v[7] = 1
+	if _status == "FRZ":
+		v[8] = 1
+	if _status == "PAR":
+		v[9] = 1
+	if _status == "PSN":
+		v[10] = 1
+	if _status == "SLP":
+		v[11] = 1
+	if _status == "TOX":
+		v[12] = 1
+
+	#some specific causes by abilities (1) or item (0.5) 
+	#difficult to deal with: Libero,Protean
+	"""
+	Intimidate,Speed Boost,Download,Intrepid Sword,Dauntless Shield
+	Sturdy, Focus Sash
+	Shadow Tag,Magnet Pull,Arena Trap (magnify dominance number)
+	Rough Skin,Iron Barbs,rocky helmet
+	Natural Cure,
+	Swift Swim, Chlorophyll,Sand Veil,Rain Dish,Snow Cloak,Dry Skin,Hydration,Solar Power,Leaf Guard,Storm Drain,Ice Body,Sand Rush,Sand Force,Slush Rush
+	Trace,
+	Cloud Nine,Air Lock,utility umbrella,Sand Stream,Drizzle,Drought,Snow Warning
+	Truant,Defeatist
+	Unburden,
+	Poison Heal,life orb,leftover,sticky barb,black sludge
+	Mold Breaker,Turboblaze,Teravolt,Neutralizing Gas
+	Unaware,
+	Contrary,
+	Unnerve,
+	Defiant,Competitive
+	Multiscale = hp%,Shadow Shield,Gale Wings
+	Moody,
+	Overcoat,
+	Regenerator,
+	Infiltrator,
+	Moxie,Soul-Heart,Beast Boost,Chilling Neigh,Grim Neigh
+	Magic Bounce,
+	Magic Guard,
+	Berserk,
+	Disguise,Ice Face
+	Electric Surge,Psychic Surge,Misty Surge,Grassy Surge
+	Sand Spit,
+	Gorilla Tactics, Choice Item
+	Unseen Fist
+	
+	hp berry,
+	type berry,seeds
+	heavy-duty boots
+	Weakness Policy, Blunder Policy
+	rock,Light Clay,Terrain Extender
+	Shed Shell
+		"""
+
+
+
+
+
+
+
+
+
+
+
+
+	return v
+
+def active_pokemon_vectorize(mon:PokemonSet):
+	v = np.zeros(100)
+	ability = mon._mon._ability
+	item = mon._mon._item
+	return v
+
+def move_vectorize(move:Move):
+	v = np.zeros(100)
 
 	v[0] = move.priority
 	
@@ -30,8 +115,10 @@ def vectorize(m):
 		v[1] = 90
 	if move._id in ("grassknot","electroball"):
 		v[2] = 90
-	if move._id == "facade"
+	if move._id == "facade":
 		v[1] = 140
+	if move._id == "steelroller":
+		v[1] == 2.6
 
 	v[3] = np.amax(v[1:2]) * 0.04 #std error
 	if isinstance(move.entry.get("multihit",{}),list):
@@ -204,7 +291,7 @@ def vectorize(m):
 	if "hasCrashDamage" in move.entry:
 		v[28] = -1/2
 	# strengthsap
-	if move._id == "strengthsap":
+	if move._id in ("strengthsap","foulplay"):
 		v[29] = 1
 
 	#flags 30: "multihit"
@@ -266,6 +353,8 @@ def vectorize(m):
 			v[53] = move.entry["damage"]
 	if move._id == "finalgambit":
 		v[53] = 2*level
+	if move._id in ("naturesmadness","superfang"):
+		v[53] = 1.2*level
 
 	#volatile status
 	_chance = 1
@@ -356,17 +445,17 @@ def vectorize(m):
 	if "field" in move.entry:
 		v[87:91] = np.ones(4)*0.5
 
-	#weather and field adjustment
-	if move.entry.get("type","") == "Fire":
+
+	if move.entry.get("type","") == "Fire" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[83] = 1
 		v[84] = -1
-		if move._id == "sunnyday":
-			v[83] == -2
-	if move.entry.get("type","") == "Water":
+	if move._id == "sunnyday":
+		v[83] == -2
+	if move.entry.get("type","") == "Water" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[83] = -1
 		v[84] = 1
-		if move._id == "raindance":
-			v[84] == -2
+	if move._id == "raindance":
+		v[84] == -2
 	if move._id == "sandstorm":
 		v[85] == -2
 	if move._id == "hail":
@@ -384,37 +473,48 @@ def vectorize(m):
 	if move._id == "weatherball":
 		v[83:87] = np.ones(4)*2
 
-	if move.entry.get("type","") == "Electric":
+	if move.entry.get("type","") == "Electric" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[87] = 1
 		if move._id == "risingvoltage": 
 			v[87] = 2
 		if move._id == "electricterrain": 
 			v[87] = -2			
-	if move.entry.get("type","") == "Grass":
+	if move.entry.get("type","") == "Grass" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[88] = 1
-		if move._id == "grassyglide": 
-			v[88] = 3
-		if move._id == "grassyterrain": 
-			v[88] = -2		
+	if move._id == "grassyglide": 
+		v[88] = 3
+	if move._id == "grassyterrain": 
+		v[88] = -2		
 	if move._id in ("bulldoze","earthquake"): 
 		v[88] = -1		
-	if move.entry.get("type","") == "Dragon":
+	if move.entry.get("type","") == "Dragon" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[89] = -1
 	if move._id == "mistyexplosion":
 		v[89] = 1
 	if move._id == "mistyterrain": 
 		v[89] = -2
-	if move.entry.get("type","") == "Psychic":
+	if move.entry.get("type","") == "Psychic" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[90] = 1
-		if move._id == "expandingforce": 
-			v[90] = 2
-		if move._id == "psychicterrain": 
-			v[90] = -2
+	if move._id == "expandingforce": 
+		v[90] = 2
+	if move._id == "psychicterrain": 
+		v[90] = -2
 	if v[0] > 0 and move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
 		v[90] = -1
 	if move._id == "terrainpulse":
 		v[87:91] = np.ones(4)*2
+	if move._id == "steelroller":
+		v[87:91] = np.ones(4)*50
+
+	if move._id == "bodypress":
+		v[91] = 1
+	if move._id in ("psychick","psystrike","secretsword"):
+		v[92] = 1
+	if move._id in ("shellsidearm","photongeyser"):
+		v[92] = 0.5
 
 
+	return v[:93]
 
-	return v[:91]
+	#current pp?
+

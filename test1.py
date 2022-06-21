@@ -2,7 +2,7 @@
 import asyncio
 import orjson
 import numpy as np
-import vector_converter as vc
+
 import sys
 from typing import Dict
 from typing import List
@@ -20,6 +20,9 @@ from poke_env.player.battle_order import (
     DoubleBattleOrder,
 )
 
+import vector_converter as vc
+from pokemonset import PokemonSet
+
 
 player_2 = RandomPlayer(
     battle_format="gen8randombattle", max_concurrent_battles=1
@@ -33,7 +36,7 @@ class MaxDamagePlayer(MyPlayer):
         battle2=list(player_2._battles.values())[-1]
 
         #print all information
-        '''
+        
         print("turn:",battle._turn)       
         print("player:")
         self.show_down(battle)
@@ -41,7 +44,7 @@ class MaxDamagePlayer(MyPlayer):
         player_2.show_down(battle2)
         print("field:",battle._fields,battle._weather)
         print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
-        '''
+        
         #self.show_opponent(battle)
 
         if battle.available_moves and np.random.uniform() < 0.8:
