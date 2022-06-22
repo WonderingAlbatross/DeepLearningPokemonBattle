@@ -16,7 +16,6 @@ from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
-from poke_env.environment.status import Status
 from my_player import MyPlayer
 from my_random_player import RandomPlayer
 from poke_env.player.battle_order import (
@@ -24,7 +23,7 @@ from poke_env.player.battle_order import (
     DefaultBattleOrder,
     DoubleBattleOrder,
 )
-
+from poke_env.environment.status import Status
 
 import vector_converter as vc
 from pokemonset import PokemonSet
@@ -32,7 +31,7 @@ from pokemonset import PokemonSet
 
 
 def my_end_item(self, item):
-    self._item = "lost"                         #change 1:add lost as item 
+    self._item = "lost"
     print(self._item)
     if item == "powerherb":
         self._preparing_move = False
@@ -47,7 +46,7 @@ def my_switch_out(self):
     self._preparing_move = None
     self._preparing_target = None
     self._protect_counter = 0
-    if self._item == "lost":                    #change 1:add lost as item 
+    if self._item == "lost":
         self._item = None
 
     if self._status == Status.TOX:
@@ -69,8 +68,8 @@ def my_update_from_request(self, request_pokemon: Dict[str, Any]) -> None:
     condition = request_pokemon["condition"]
     self._set_hp_status(condition)
 
-    if request_pokemon["item"] or not self._item == "lost":
-        self._item = request_pokemon["item"]                    #change 1:add lost as item
+    if request_pokemon["item"] or self._item != "lost":
+        self._item = request_pokemon["item"]
 
     details = request_pokemon["details"]
     self._update_from_details(details)
@@ -94,11 +93,16 @@ Pokemon._end_item = my_end_item
 Pokemon._switch_out = my_switch_out
 Pokemon._update_from_request= my_update_from_request
 
+team_2 = """
+Drifblim @ Heavy-Duty Boots  
+Ability: Unburden  
+EVs: 252 HP / 252 Atk  
+- Acrobatics
+"""
 
 player_2 = RandomPlayer(
-    battle_format="gen8randombattle", max_concurrent_battles=1
-)
-
+        battle_format="gen8ubers", team=team_2, max_concurrent_battles=10
+    )
 
 class MaxDamagePlayer(MyPlayer):
 
@@ -108,7 +112,7 @@ class MaxDamagePlayer(MyPlayer):
 
         #print all information
         
-        print("turn:",battle._turn)       
+        print("\n","turn:",battle._turn)       
         print("player:")
         self.show_down(battle)
         print("opponent:")
@@ -135,30 +139,6 @@ class MaxDamagePlayer(MyPlayer):
                 return self.choose_default_move(battle)
 
 
-    def teampreview(self, battle):
-        mon_performance = {}
-
-        # For each of our pokemons
-        for i, mon in enumerate(battle.team.values()):
-            # We store their average performance against the opponent team
-            mon_performance[i] = np.mean(
-                [
-                    teampreview_performance(mon, opp)
-                    for opp in battle.opponent_team.values()
-                ]
-            )
-
-        # We sort our mons by performance
-        ordered_mons = sorted(mon_performance, key=lambda k: -mon_performance[k])
-
-        # We start with the one we consider best overall
-        # We use i + 1 as python indexes start from 0
-        #  but showdown's indexes start from 1
-        return "/team " + "".join([str(i + 1) for i in ordered_mons])
-
-        #winning signal changed only
-
-
 def teampreview_performance(mon_a, mon_b):
     # We evaluate the performance on mon_a against mon_b as its type advantage
     a_on_b = b_on_a = -np.inf
@@ -173,29 +153,34 @@ def teampreview_performance(mon_a, mon_b):
     return a_on_b - b_on_a
 
 
-
-
-
-
 async def main():
+    team_1 = """
+Amoonguss  @  Eject Button  
+Ability: Regenerator  
+EVs: 252 HP / 252 Def / 4 Spe  
+IVs: 0 Atk  
+- Spore
+
+
+Treecko @ Coba Berry 
+Ability: Overgrow  
+EVs: 252 SpA / 252 SpD / 4 Spe  
+IVs: 0 Atk  
+- Agility  
+
+"""
     fd=open("test.txt","w")
     sys.stdout=fd
 
-    max_damage_player_1 = MaxDamagePlayer(
-        battle_format="gen8randombattle", max_concurrent_battles=1
+    max_damage_player = MaxDamagePlayer(
+        battle_format="gen8ubers", team=team_1, max_concurrent_battles=10
     )
 
     n_battles = 1
-    await max_damage_player_1.battle_against(player_2, n_battles)
+    await max_damage_player.battle_against(player_2, n_battles)
 
-    print(
-        "Max damage player won %d / %d battles"
-        % (max_damage_player_1.n_won_battles, n_battles)
-    )
     fd.close()
-
 
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main())
-

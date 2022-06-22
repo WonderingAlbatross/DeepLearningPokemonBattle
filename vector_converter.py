@@ -7,6 +7,9 @@ from pokemonset import PokemonSet
 
 level = 100
 
+antitypeberry = ("occaberry","passhoberry","wacanberry","rindoberry","rindoberry","yacheberry","chopleberry","kebiaberry","shucaberry","cobaberry","payapaberry","tangaberry","chartiberry","kasibberry","habanberry","colburberry","babiriberry","chilanberry","roseliberry")
+giantberry = ("aguavberry","figyberry","iapapaberry","magoberry","wikiberry")
+
 def boosts_to_multi(n):
 	if n > 0:
 		k = 1 + n / 2
@@ -19,61 +22,84 @@ def pokemon_vectorize(mon:PokemonSet):
 	ability = mon._mon._ability
 	item = mon._mon._item 
 	v[0:7] = mon._stats
-	_status = mon._mon._status.name
-	if _status == "BRN":
-		v[7] = 1
-	if _status == "FRZ":
-		v[8] = 1
-	if _status == "PAR":
-		v[9] = 1
-	if _status == "PSN":
-		v[10] = 1
-	if _status == "SLP":
-		v[11] = 1
-	if _status == "TOX":
-		v[12] = 1
+	if mon._mon._status:
+		_status = mon._mon._status.name
+		print("_status",_status)
+		if _status == "BRN":
+			v[7] = 1
+			v[10] = 1
+		if _status == "FRZ":
+			v[8] = 1
+		if _status == "PAR":
+			v[9] = 1
+		if _status == "PSN":
+			v[10] = 2
+		if _status == "SLP":
+			v[11] = 3 - mon._mon._status_counter
+		if _status == "TOX":
+			v[10] = 1 + mon._mon._status_counter
 
-	#some specific causes by abilities (1) or item (0.5) 
+	if item:								#only those have effect other than a move vector can describe counts
+		v[12] = 1
+	if item == "lost":
+		v[12] = 0
+		v[50] = 1 											#lost item
+	if item == "safetygoggles":
+		v[13] = 1
+	if item == "assaultvest":
+		v[14] = 1
+	if item in ("choiceband","choicespecs","choicescarf"):
+		v[15] = 1
+#	if item == "weaknesspolicy"  move vector: hit and boost enemy
+	if item == "stickybarb":
+		v[16] = 1
+	if item == "focussash":
+		v[17] = 1
+	if item in ("leftover","blacksludge"):
+		v[18] = 1
+	if item == "heavydutyboots":
+		v[19] = 1
+
+
+
+	#some specific causes by abilities (2) or item (1) 
 	#difficult to deal with: Libero,Protean
 	"""
-	Intimidate,Speed Boost,Download,Intrepid Sword,Dauntless Shield
+	Speed Boost,
+	Intimidate,Download,Intrepid Sword,Dauntless Shield
 	Sturdy, Focus Sash
 	Shadow Tag,Magnet Pull,Arena Trap (magnify dominance number)
 	Rough Skin,Iron Barbs,rocky helmet
 	Natural Cure,
 	Swift Swim, Chlorophyll,Sand Veil,Rain Dish,Snow Cloak,Dry Skin,Hydration,Solar Power,Leaf Guard,Storm Drain,Ice Body,Sand Rush,Sand Force,Slush Rush
 	Trace,
-	Cloud Nine,Air Lock,utility umbrella,Sand Stream,Drizzle,Drought,Snow Warning
+	Cloud Nine,Air Lock,utility umbrella,Sand Stream,Drizzle,Drought,Snow Warning 
 	Truant,Defeatist
 	Unburden,
-	Poison Heal,life orb,leftover,sticky barb,black sludge
+	Poison Heal,life orb,leftover,sticky barb,black sludge,effect:ingrain,aquaring
 	Mold Breaker,Turboblaze,Teravolt,Neutralizing Gas
 	Unaware,
 	Contrary,
 	Unnerve,
-	Defiant,Competitive
 	Multiscale = hp%,Shadow Shield,Gale Wings
 	Moody,
 	Overcoat,
 	Regenerator,
-	Infiltrator,
+	Infiltrator, 
 	Moxie,Soul-Heart,Beast Boost,Chilling Neigh,Grim Neigh
 	Magic Bounce,
 	Magic Guard,
 	Berserk,
 	Disguise,Ice Face
-	Electric Surge,Psychic Surge,Misty Surge,Grassy Surge
-	Sand Spit,
+	Electric Surge,Psychic Surge,Misty Surge,Grassy Surge 
+	Unseen Fist,
 	Gorilla Tactics, Choice Item
-	Unseen Fist
 	
-	hp berry,
-	type berry,seeds
+
 	heavy-duty boots
-	Weakness Policy, Blunder Policy
-	rock,Light Clay,Terrain Extender
 	Shed Shell
 		"""
+	#specific types
 
 
 
@@ -85,13 +111,14 @@ def pokemon_vectorize(mon:PokemonSet):
 
 
 
-
-	return v
+	return v[:16]
 
 def active_pokemon_vectorize(mon:PokemonSet):
 	v = np.zeros(100)
 	ability = mon._mon._ability
 	item = mon._mon._item
+
+	#lost item
 	return v
 
 def move_vectorize(move:Move):
@@ -99,9 +126,9 @@ def move_vectorize(move:Move):
 
 	v[0] = move.priority
 	
-	if move.entry.get("category",{}) == "Physical":
+	if move.entry["category"] == "Physical":
 		v[1] = move.base_power
-	if move.entry.get("category",{}) == "Special":
+	if move.entry["category"] == "Special":
 		v[2] = move.base_power	
 	if "ohko" in move.entry:
 		v[1] = 10000

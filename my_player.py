@@ -153,7 +153,7 @@ class MyPlayer(Player):
             elif split_message[1] == "turn":
                 battle._parse_message(split_message)
 
-                # todo: record damage (also crit) and transmit to building guesser
+                # todo: record damage (also crit, anti-type berry) and transmit to building guesser
 
 
                 await self._handle_battle_request(battle)
@@ -172,10 +172,13 @@ class MyPlayer(Player):
         stats = ps._stats
         moves = ps._mon._moves
         ability = ps._mon._ability
-        item = ps._mon._item                        #check used item!
-        print(ps._mon._species,stats,ability,item)
+        item = ps._mon._item                        
+        print(ps._mon._species,stats,ability)
+        if item:
+            print("item:",item)
         print("status:",_mon._status,_mon._status_counter)
         print(moves)
+        print(vc.pokemon_vectorize(ps))
         if _mon.active:
             boosts = list(_mon._boosts.values())
             acc = boosts.pop(0)

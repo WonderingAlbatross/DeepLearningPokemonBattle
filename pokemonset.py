@@ -10,6 +10,8 @@ from typing import Union
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 
+import building_guesser as bg
+
 
 class PokemonSet:
 	__slots__ = (
@@ -48,3 +50,15 @@ class PokemonSet:
 			f"{self._mon}"
 			f"{self._stats}"
 		)
+
+
+	def random_possible_set(self):
+		return self
+
+
+	def most_possible_set(self):
+		return self
+
+
+	def mixed_possible_set(self):
+		return self
