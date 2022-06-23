@@ -23,7 +23,8 @@ class PokemonSet:
 		"_spd_clues",
 		"_hp_clues",
 		"_speed_range",
-		"_current_pp"
+		"_current_pp",
+		"_already_moved"
 		)
 
 	def __init__(self, _mon:Pokemon):
@@ -35,7 +36,8 @@ class PokemonSet:
 		self._spd_clues: List(float)
 		self._hp_clues: List(float)
 		self._speed_range = [1,999]
-		self._current_pp: Dict[str, int]
+		self._current_pp: Dict[Move, int]
+		self._already_moved = False
 
 		if _mon._last_request:
 			self._stats[0] = _mon._current_hp

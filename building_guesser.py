@@ -60,3 +60,5 @@ def _is_consumable(a):
 	return 0
 
 
+#guess hp from leechseed, 50damage
+

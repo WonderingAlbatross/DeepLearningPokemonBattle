@@ -112,13 +112,13 @@ class MaxDamagePlayer(MyPlayer):
 
         #print all information
         
-        print("\n","turn:",battle._turn)       
+        print("turn:",battle._turn)       
         print("player:")
         self.show_down(battle)
         print("opponent:")
         player_2.show_down(battle2)
         print("field:",battle._fields,battle._weather)
-        print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
+        print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions,"\n\n")
         
         #self.show_opponent(battle)
 
@@ -155,19 +155,11 @@ def teampreview_performance(mon_a, mon_b):
 
 async def main():
     team_1 = """
-Amoonguss  @  Eject Button  
-Ability: Regenerator  
-EVs: 252 HP / 252 Def / 4 Spe  
-IVs: 0 Atk  
-- Spore
-
-
-Treecko @ Coba Berry 
-Ability: Overgrow  
+Jirachi @ Air Balloon  
+Ability: Serene Grace  
 EVs: 252 SpA / 252 SpD / 4 Spe  
 IVs: 0 Atk  
-- Agility  
-
+- Gravity
 """
     fd=open("test.txt","w")
     sys.stdout=fd

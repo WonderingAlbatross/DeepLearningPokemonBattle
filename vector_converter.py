@@ -1,7 +1,14 @@
 import numpy as np
+from typing import Optional
+from typing import Dict
 
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
+from poke_env.environment.effect import Effect
+from poke_env.environment.field import Field
+from poke_env.environment.pokemon_type import PokemonType
+from poke_env.environment.side_condition import STACKABLE_CONDITIONS, SideCondition
+from poke_env.environment.weather import Weather
 
 from pokemonset import PokemonSet
 
@@ -10,73 +17,143 @@ level = 100
 antitypeberry = ("occaberry","passhoberry","wacanberry","rindoberry","rindoberry","yacheberry","chopleberry","kebiaberry","shucaberry","cobaberry","payapaberry","tangaberry","chartiberry","kasibberry","habanberry","colburberry","babiriberry","chilanberry","roseliberry")
 giantberry = ("aguavberry","figyberry","iapapaberry","magoberry","wikiberry")
 
-def boosts_to_multi(n):
-	if n > 0:
-		k = 1 + n / 2
-	else:
-		k = 1 / (1 - n / 2)
-	return k
 
 def pokemon_vectorize(mon:PokemonSet):
 	v = np.zeros(100)
 	ability = mon._mon._ability
 	item = mon._mon._item 
+	types = (mon._mon._type_1.name,mon._mon._type_2.name)
+
+ 
+
 	v[0:7] = mon._stats
 	if mon._mon._status:
 		_status = mon._mon._status.name
-		print("_status",_status)
+		v[7] = 1
 		if _status == "BRN":
-			v[7] = 1
 			v[10] = 1
+			if ability != "magicguard":
+				v[8] -= 1							#heal 1/16 per turn
 		if _status == "FRZ":
-			v[8] = 1
-		if _status == "PAR":
-			v[9] = 1
-		if _status == "PSN":
-			v[10] = 2
+			v[9] = 4
+		if _status == "PAR":			
+			v[9] = 1/4
+			v[11] = 1
+		if _status == "PSN" and ability != "magicguard":
+			if ability == "poisonheal":
+				v[8] += 2
+			else:
+				v[8] -= 2
 		if _status == "SLP":
-			v[11] = 3 - mon._mon._status_counter
-		if _status == "TOX":
-			v[10] = 1 + mon._mon._status_counter
+			v[9] = 3 - mon._mon._status_counter
+		if _status == "TOX" and ability != "magicguard":
+			if ability == "poisonheal":
+				v[8] += 2
+			else:
+				v[8] -= ( 1 + mon._mon._status_counter )
 
-	if item:								#only those have effect other than a move vector can describe counts
-		v[12] = 1
-	if item == "lost":
-		v[12] = 0
-		v[50] = 1 											#lost item
-	if item == "safetygoggles":
-		v[13] = 1
-	if item == "assaultvest":
-		v[14] = 1
-	if item in ("choiceband","choicespecs","choicescarf"):
-		v[15] = 1
-#	if item == "weaknesspolicy"  move vector: hit and boost enemy
-	if item == "stickybarb":
-		v[16] = 1
-	if item == "focussash":
-		v[17] = 1
 	if item in ("leftover","blacksludge"):
-		v[18] = 1
-	if item == "heavydutyboots":
-		v[19] = 1
+		v[8] += 1	
+	if item == "stickybarb" and ability != "magicguard":
+		v[8] -= 2	
+	if item in ("choiceband","choicespecs","choicescarf"):
+		v[12] = 1
+	if ability == "gorillatactics":
+		v[12] = 1
+	if item == "focussash":
+		v[13] = 1
+	if ability == "sturdy":
+		v[13] = 1
+	if mon._mon._species in ("mimikyu","eiscue"): #test it
+		v[14] = 1
+
+
+	if mon._mon.active:
+
+		effects = mon._mon._effects 
+
+		if Effect.AQUA_RING in effects:
+			v[8] += 1
+		if Effect.BIND in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.BIND]
+		if Effect.CLAMP in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.CLAMP]
+		if Effect.CONFUSION in effects:
+			v[9] += 1/3
+			v[8] -= 1
+		if Effect.CURSE in effects:
+			v[8] -= 4 
+	#	if Effect.DESTINY_BOND in effects: -200%hp side effect
+		if Effect.ENCORE in effects:
+			v[12] = 3 - effects[Effect.ENCORE]
+		if Effect.FIRE_SPIN in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.FIRE_SPIN]		
+		if Effect.INFESTATION in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.INFESTATION]
+		if Effect.INGRAIN in effects:
+			v[8] += 1
+		if Effect.LEECH_SEED in effects:
+			v[8] -= 2
+		if Effect.MAGMA_STORM in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.MAGMA_STORM]
+		if Effect.NO_RETREAT in effects:
+			v[15] = 10
+		if Effect.OCTOLOCK in effects:
+			v[15] = 10	
+		if Effect.PERISH0 in effects:
+			v[16] = 1	
+		if Effect.PERISH1 in effects:
+			v[16] = 2
+		if Effect.PERISH2 in effects:
+			v[16] = 3
+		if Effect.PERISH3 in effects:
+			v[16] = 4
+		if Effect.SAND_TOMB in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.SAND_TOMB]
+		if Effect.SNAP_TRAP in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.SNAP_TRAP]
+		if Effect.SUBSTITUTE in effects:
+			v[14] = 1
+		if Effect.THUNDER_CAGE in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.THUNDER_CAGE]
+		if Effect.TRAPPED in effects:
+			v[15] = 10	
+		if Effect.WHIRLPOOL in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.WHIRLPOOL]
+		if Effect.WRAP in effects:
+			v[8] -= 2
+			v[15] = 5 - effects[Effect.WRAP]
+
+		return(v[:17])
+	
+	else:
+		return(v[:15])
+
 
 
 
 	#some specific causes by abilities (2) or item (1) 
-	#difficult to deal with: Libero,Protean
+	#difficult to deal with: Libero,Protean: use move when calc advantage credit
 	"""
-	Speed Boost,
-	Intimidate,Download,Intrepid Sword,Dauntless Shield
-	Sturdy, Focus Sash
-	Shadow Tag,Magnet Pull,Arena Trap (magnify dominance number)
-	Rough Skin,Iron Barbs,rocky helmet
+	Speed Boost,:show in advantage credit (spd+1)
+	Intimidate(to Competitive),Download,Intrepid Sword,Dauntless Shield :show in advantage credit
+	Shadow Tag,Magnet Pull,Arena Trap (magnify advantage credit)
 	Natural Cure,
 	Swift Swim, Chlorophyll,Sand Veil,Rain Dish,Snow Cloak,Dry Skin,Hydration,Solar Power,Leaf Guard,Storm Drain,Ice Body,Sand Rush,Sand Force,Slush Rush
 	Trace,
 	Cloud Nine,Air Lock,utility umbrella,Sand Stream,Drizzle,Drought,Snow Warning 
 	Truant,Defeatist
 	Unburden,
-	Poison Heal,life orb,leftover,sticky barb,black sludge,effect:ingrain,aquaring
+	ingrain,aquaring
 	Mold Breaker,Turboblaze,Teravolt,Neutralizing Gas
 	Unaware,
 	Contrary,
@@ -84,13 +161,12 @@ def pokemon_vectorize(mon:PokemonSet):
 	Multiscale = hp%,Shadow Shield,Gale Wings
 	Moody,
 	Overcoat,
-	Regenerator,
 	Infiltrator, 
-	Moxie,Soul-Heart,Beast Boost,Chilling Neigh,Grim Neigh
+	Moxie,Soul-Heart,Beast Boost,Chilling Neigh,Grim Neigh :show in advantage credit (spd+1)
 	Magic Bounce,
 	Magic Guard,
 	Berserk,
-	Disguise,Ice Face
+	Disguise,Ice Face: hit and recover (like substitute)
 	Electric Surge,Psychic Surge,Misty Surge,Grassy Surge 
 	Unseen Fist,
 	Gorilla Tactics, Choice Item
@@ -103,6 +179,49 @@ def pokemon_vectorize(mon:PokemonSet):
 
 
 
+	#knock off, itemswitch,tailwind,weather/field(contains trickroom) change, etc:see how advantage credit change after changing
+#	if item == "safetygoggles": if ability == "overcoat":
+#	if item == "assaultvest": only relates to trick
+#	if item == "rockyhelmet": if ability in ("roughskin","ironbarbs"): hit side effect 	
+#	if item == "lifeorb" and ability != "magicguard": hit side effect	
+'''
+	#let switch act as a move!
+	v[20] = PokemonType.ROCK.damage_multiplier(*mon._mon.types)
+	if _is_grounded(mon,None):
+		v[18] = 1
+		v[19] = 1
+		v[21] = 1
+		if "STEEL" in types:
+			v[19] = 0	
+		if "POISON" in types:
+			v[19] = -1
+		if ability in ("competitive","defiant","contrary"):
+			v[21] = -1
+	if item == "heavydutyboots" or ability == "magicguard":
+		v[18] = 0
+		v[19] = 0
+		v[20] = 0
+		v[21] = 0
+'''
+
+
+
+#	if ability == "regenerator": natural cure: heal after switch
+
+
+
+
+def modified_move_vector(v,mon:PokemonSet,oppo:PokemonSet,weather,field,side,oppo_side):
+	ability = mon._mon._ability
+	item = mon._mon._item 
+	t1 = mon._mon._type_1.name
+	t2 = mon._mon._type_2.name
+	#add future attack as side
+
+	#if opponent can change weather, weather = ...
+	#!! if already ingrain, ingrain is not useful, etc
+
+	return v
 
 
 
@@ -111,7 +230,7 @@ def pokemon_vectorize(mon:PokemonSet):
 
 
 
-	return v[:16]
+
 
 def active_pokemon_vectorize(mon:PokemonSet):
 	v = np.zeros(100)
@@ -144,8 +263,6 @@ def move_vectorize(move:Move):
 		v[2] = 90
 	if move._id == "facade":
 		v[1] = 140
-	if move._id == "steelroller":
-		v[1] == 2.6
 
 	v[3] = np.amax(v[1:2]) * 0.04 #std error
 	if isinstance(move.entry.get("multihit",{}),list):
@@ -175,7 +292,7 @@ def move_vectorize(move:Move):
 	v[5] = move.crit_ratio
 
 	
-	#selfboosts
+	#selfboosts												#Spectral Thief
 	_chance = 1
 	_boosts = {}
 	if move.entry.get("selfBoost",{}):
@@ -260,23 +377,16 @@ def move_vectorize(move:Move):
 	
 	if _status == "brn":
 		v[20] = _chance
-		v[89] = -_chance
 	if _status == "frz":
 		v[21] = _chance
-		v[89] = -_chance
 	if _status == "par":
 		v[22] = _chance
-		v[89] = -_chance
 	if _status == "psn":
 		v[23] = _chance
-		v[89] = -_chance
 	if _status == "slp":
 		v[24] = _chance
-		v[89] = -1
-		v[87] = -1
 	if _status == "tox":
 		v[25] = _chance
-		v[89] = -_chance
 
 	if move._id == "triattack":
 		v[20] = 1/15
@@ -289,15 +399,10 @@ def move_vectorize(move:Move):
 	#self%
 	if "heal" in move.entry and move.entry.get("target",{}) in ("self","allies"):
 		v[26] = move.entry["heal"][0]/move.entry["heal"][1]
-	if move._id in ("synthesis","morningsun","moonlight"):
+	if move._id in ("synthesis","morningsun","moonlight","strengthsap","shoreup"):
 		v[26] = 1/2
-		v[83] = 1
-		v[84] = -1
-		v[85] = -1
-		v[86] = -1
-	if move._id == "shoreup":
-		v[26] = 1/2
-		v[85] = 1
+	if move._id == "rest":
+		v[26] = 1
 	if "mindBlownRecoil" in move.entry or move._id in ("bellydrum","curse"):
 		v[26] = -1/2
 	if move._id == "substitute":
@@ -346,7 +451,7 @@ def move_vectorize(move:Move):
 	if move._id in ("ingrain","noretreat","jawlock"):
 		v[41] = 1
 	if move._id in ("meanlook","block","spiderweb","jawlock","octolock","thousandwaves","spiritshackle","anchorshot"):
-		v[42] = 1	
+		v[42] = 2	
 	if move._id in ("ingrain","aquaring"):
 		v[43] = 1
 	if move._id in ("protect","detect","endure","spikyshield","kingsshield","banefulbunker","obstruct"):
@@ -383,6 +488,15 @@ def move_vectorize(move:Move):
 	if move._id in ("naturesmadness","superfang"):
 		v[53] = 1.2*level
 
+# this slot53 for passive damage side effects	
+
+	if move._id == "rest":			#also when yawned
+		v[54] = 1
+
+
+
+
+
 	#volatile status
 	_chance = 1
 	_volatilestatus = move.entry.get("volatileStatus","")
@@ -396,12 +510,12 @@ def move_vectorize(move:Move):
 				_chance = _secondary.get("chance",100)/100
 
 	if _volatilestatus == "flinch":
-		v[54] = _chance
-	if _volatilestatus == "partiallytrapped":
 		v[55] = _chance
+	if _volatilestatus == "partiallytrapped":			
+		v[42] = 1
+		v[53] = 0.3*level
 	if _volatilestatus == "confusion":
 		v[56] = _chance
-		v[89] = -_chance
 	if _volatilestatus == "curse":
 		v[57] = _chance
 	if _volatilestatus == "destinybond":
@@ -428,7 +542,6 @@ def move_vectorize(move:Move):
 		v[68] = _chance
 	if _volatilestatus == "yawn":
 		v[69] = _chance
-		v[87] = -1
 
 	#trickroom, tailwind, wall and spikes. ~no one change weather/field by move, so as changing ability, one tag for each is enough
 	if move._id == "auroraveil":
@@ -458,35 +571,63 @@ def move_vectorize(move:Move):
 		v[78] = 1
 	if move._id == "defog":
 		v[79] = 1
-	if "onModifyType" in move.entry:
+
+	if move._id in ("healbell","aromatherapy","junglehealing"):
+		v[80] = 2
+	if move._id in ("refresh","rest"):
 		v[80] = 1
+	if move.id == "psychoshift":
+		v[80] = 0.5
 
 	if move._id in ("knockoff","trick","switcheroo"):
 		v[81] = 1
 	if move._id in ("gastroacid","coreenforcer","worryseed","simplebeam","entrainment","skillswap"):
 		v[82] = 1
+	#also mummy
+
+	if move._id == "sunnyday":
+		v[83] = 1
+	if move._id == "raindance":
+		v[84] = 1
+	if move._id == "sandstorm":
+		v[85] = 1
+	if move._id == "hail":
+		v[86] = 1
+	if move._id == "electricterrain": 
+		v[87] = 1
+	if move._id == "grassyterrain": 
+		v[88] = 1
+	if move._id == "mistyterrain": 
+		v[89] = 1
+	if move._id == "psychicterrain": 
+		v[90] = 1
 
 
-	if "weather" in move.entry:
-		v[83:87] = np.ones(4)*0.5
-	if "field" in move.entry:
-		v[87:91] = np.ones(4)*0.5
+	if move._id == "bodypress":
+		v[91] = 1
+	if move._id in ("psychick","psystrike","secretsword"):
+		v[92] = 1
+	if move._id in ("shellsidearm","photongeyser"):
+		v[92] = 0.5
 
-
+	
+	
+	return v[:93]
+'''
 	if move.entry.get("type","") == "Fire" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[83] = 1
 		v[84] = -1
 	if move._id == "sunnyday":
-		v[83] == -2
+		v[83] = -2
 	if move.entry.get("type","") == "Water" and move.entry.get("category",{}) in ("Physical","Special"):
 		v[83] = -1
 		v[84] = 1
 	if move._id == "raindance":
-		v[84] == -2
+		v[84] = -2
 	if move._id == "sandstorm":
-		v[85] == -2
+		v[85] = -2
 	if move._id == "hail":
-		v[86] == -2
+		v[86] = -2
 	if move._id in ("solarblade","solarbeam"):
 		v[83] = 2
 		v[84] = -1
@@ -532,16 +673,37 @@ def move_vectorize(move:Move):
 		v[87:91] = np.ones(4)*2
 	if move._id == "steelroller":
 		v[87:91] = np.ones(4)*50
-
-	if move._id == "bodypress":
-		v[91] = 1
-	if move._id in ("psychick","psystrike","secretsword"):
-		v[92] = 1
-	if move._id in ("shellsidearm","photongeyser"):
-		v[92] = 0.5
+'''
 
 
-	return v[:93]
 
-	#current pp?
+def _is_grounded(mon:PokemonSet,fields:Optional[Dict]):
+	if fields:
+		if Field.GRAVITY in fields:
+			return True
+	if Effect.INGRAIN in mon._mon._effects:
+		return True
+	if Effect.SMACK_DOWN in mon._mon._effects:
+		return True
+	if mon._mon._item == "ironball":
+		return True
+	if mon._mon._type_1.name == "FLYING":
+		return False
+	if mon._mon._type_2.name == "FLYING":
+		return False
+	if mon._mon._ability == "levitate":
+		return False
+	if mon._mon._item == "airballoon":
+		return False
+	if Effect.MAGNET_RISE in mon._mon._effects:
+		return False
+	if Effect.TELEKINESIS in mon._mon._effects:
+		return False
+	return True
 
+def boosts_to_multi(n):
+	if n > 0:
+		k = 1 + n / 2
+	else:
+		k = 1 / (1 - n / 2)
+	return k

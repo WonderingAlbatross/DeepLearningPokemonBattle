@@ -153,8 +153,9 @@ class MyPlayer(Player):
             elif split_message[1] == "turn":
                 battle._parse_message(split_message)
 
+                # my_handle_message(split_message)
                 # todo: record damage (also crit, anti-type berry) and transmit to building guesser
-
+                # todo: find if enemy have attacked (!focus punch)
 
                 await self._handle_battle_request(battle)
             elif split_message[1] == "teampreview":
@@ -167,18 +168,14 @@ class MyPlayer(Player):
 
 
 
-    def show_info(self,_mon):
-        ps = PokemonSet(_mon)
-        stats = ps._stats
-        moves = ps._mon._moves
-        ability = ps._mon._ability
-        item = ps._mon._item                        
-        print(ps._mon._species,stats,ability)
-        if item:
-            print("item:",item)
-        print("status:",_mon._status,_mon._status_counter)
-        print(moves)
-        print(vc.pokemon_vectorize(ps))
+    def show_info(self,_mon,battle):
+        mon = PokemonSet(_mon)
+        stats = mon._stats
+        moves = mon._mon._moves
+        ability = mon._mon._ability
+        item = mon._mon._item                        
+        print(mon._mon._species,stats,ability,item)
+        print(vc.pokemon_vectorize(mon))
         if _mon.active:
             boosts = list(_mon._boosts.values())
             acc = boosts.pop(0)
@@ -188,16 +185,16 @@ class MyPlayer(Player):
             print("boosts:",boosts)
             print("effects:",_mon._effects)    
             print("protect_counter:",_mon._protect_counter) 
-        
+        print("\n")
 
 
     def show_down(self,battle):
         if battle.active_pokemon:
             _mon = battle.active_pokemon
-            self.show_info(_mon)
+            self.show_info(_mon,battle)
         for _mon in battle.team.values():
             if not _mon.active:
-                self.show_info(_mon)
+                self.show_info(_mon,battle)
  
 
     def show_opponent(self,battle): 
