@@ -18,13 +18,26 @@ antitypeberry = ("occaberry","passhoberry","wacanberry","rindoberry","rindoberry
 giantberry = ("aguavberry","figyberry","iapapaberry","magoberry","wikiberry")
 
 
-def pokemon_vectorize(mon:PokemonSet):
-	v = np.zeros(100)
+
+def modified_move_vector(v,mon:PokemonSet,oppo:PokemonSet,weather,field,side,oppo_side):
 	ability = mon._mon._ability
 	item = mon._mon._item 
-	types = (mon._mon._type_1.name,mon._mon._type_2.name)
+	types = (mon._mon._type_1,mon._mon._type_2)
+	oppo_ability = oppo._mon._ability
+	oppo_item = oppo._mon._item 
+	oppo_types = (oppo._mon._type_1,oppo._mon._type_2)
+	#add future attack as oppo side situation
 
- 
+	#if opponent can change weather, weather = ...
+	#!! if already ingrain, ingrain is not useful, etc
+
+	return v
+
+def pokemon_vectorize(mon:PokemonSet):
+	v = np.zeros(30)
+	ability = mon._mon._ability
+	item = mon._mon._item 
+	types = (mon._mon._type_1,mon._mon._type_2)
 
 	v[0:7] = mon._stats
 	if mon._mon._status:
@@ -57,9 +70,9 @@ def pokemon_vectorize(mon:PokemonSet):
 	if item == "stickybarb" and ability != "magicguard":
 		v[8] -= 2	
 	if item in ("choiceband","choicespecs","choicescarf"):
-		v[12] = 1
+		v[12] = 10
 	if ability == "gorillatactics":
-		v[12] = 1
+		v[12] = 10
 	if item == "focussash":
 		v[13] = 1
 	if ability == "sturdy":
@@ -87,7 +100,8 @@ def pokemon_vectorize(mon:PokemonSet):
 			v[8] -= 4 
 	#	if Effect.DESTINY_BOND in effects: -200%hp side effect
 		if Effect.ENCORE in effects:
-			v[12] = 3 - effects[Effect.ENCORE]
+			if v[12] == 0:
+				v[12] = 3 - effects[Effect.ENCORE]
 		if Effect.FIRE_SPIN in effects:
 			v[8] -= 2
 			v[15] = 5 - effects[Effect.FIRE_SPIN]		
@@ -132,16 +146,27 @@ def pokemon_vectorize(mon:PokemonSet):
 		if Effect.WRAP in effects:
 			v[8] -= 2
 			v[15] = 5 - effects[Effect.WRAP]
+		
+		boosts = list(mon._mon._boosts.values())
+		v[22] = boosts.pop(0)		#acc
+		v[23] = boosts.pop(2)		#eva
+		for i in range(0,5):
+			v[17+i] = v[2+i]*boosts_to_multi(boosts[i])
 
-		return(v[:17])
+			#check if item will change stats!
+
+
+
+
+		return(v[:24])
 	
 	else:
-		return(v[:15])
+		return(v[:17])
 
 
 
 
-	#some specific causes by abilities (2) or item (1) 
+	#locked move/encore/choise: only counts for lastmove when calc advantage credit
 	#difficult to deal with: Libero,Protean: use move when calc advantage credit
 	"""
 	Speed Boost,:show in advantage credit (spd+1)
@@ -211,17 +236,7 @@ def pokemon_vectorize(mon:PokemonSet):
 
 
 
-def modified_move_vector(v,mon:PokemonSet,oppo:PokemonSet,weather,field,side,oppo_side):
-	ability = mon._mon._ability
-	item = mon._mon._item 
-	t1 = mon._mon._type_1.name
-	t2 = mon._mon._type_2.name
-	#add future attack as side
 
-	#if opponent can change weather, weather = ...
-	#!! if already ingrain, ingrain is not useful, etc
-
-	return v
 
 
 
@@ -676,10 +691,59 @@ def move_vectorize(move:Move):
 '''
 
 
+def weather_field_vectorize(weather,field,turn):
+	v = np.zeros(10)
+	if weather:
+		if Weather.SUNNYDAY in weather:
+			v[0] = 8 - turn + weather[Weather.SUNNYDAY]
+		if Weather.RAINDANCE in weather:
+			v[1] = 8 - turn + weather[Weather.RAINDANCE]
+		if Weather.SANDSTORM in weather:
+			v[2] = 8 - turn + weather[Weather.SANDSTORM]
+		if Weather.HAIL in weather:
+			v[3] = 8 - turn + weather[Weather.HAIL]
 
-def _is_grounded(mon:PokemonSet,fields:Optional[Dict]):
-	if fields:
-		if Field.GRAVITY in fields:
+	if field:
+		if Field.ELECTRIC_TERRAIN in field:
+			v[4] = 8 - turn + field[Field.ELECTRIC_TERRAIN]
+		if Field.GRASSY_TERRAIN in field:
+			v[5] = 8 - turn + field[Field.GRASSY_TERRAIN]
+		if Field.MISTY_TERRAIN in field:
+			v[6] = 8 - turn + field[Field.MISTY_TERRAIN]
+		if Field.PSYCHIC_TERRAIN in field:
+			v[7] = 8 - turn + field[Field.PSYCHIC_TERRAIN]
+		if Field.GRAVITY in field:
+			v[8] = 5 - turn + field[Field.GRAVITY]
+		if Field.TRICK_ROOM in field:
+			v[9] = 5 - turn + field[Field.TRICK_ROOM]
+	return v
+
+def side_condition_vectorize(side,turn):
+	v = np.zeros(10)
+	if side:
+		if SideCondition.AURORA_VEIL in side:
+			v[0] = 8 - turn + side[SideCondition.AURORA_VEIL]
+			v[1] = 8 - turn + side[SideCondition.AURORA_VEIL]
+		if SideCondition.REFLECT in side:
+			v[0] = 8 - turn + side[SideCondition.REFLECT]
+		if SideCondition.LIGHT_SCREEN in side:
+			v[1] = 8 - turn + side[SideCondition.LIGHT_SCREEN]
+		if SideCondition.SPIKES in side:
+			v[2] = side[SideCondition.SPIKES]
+		if SideCondition.STEALTH_ROCK in side:
+			v[3] = 1	
+		if SideCondition.STICKY_WEB in side:
+			v[4] = 1	
+		if SideCondition.TOXIC_SPIKES in side:
+			v[5] = side[SideCondition.TOXIC_SPIKES]
+		if SideCondition.TAILWIND in side:
+			v[6] = 4 - turn + side[SideCondition.TAILWIND]
+	return v[:7]
+
+
+def _is_grounded(mon:PokemonSet,field:Optional[Dict]):
+	if field:
+		if Field.GRAVITY in field:
 			return True
 	if Effect.INGRAIN in mon._mon._effects:
 		return True

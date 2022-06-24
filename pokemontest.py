@@ -93,16 +93,29 @@ Pokemon._end_item = my_end_item
 Pokemon._switch_out = my_switch_out
 Pokemon._update_from_request= my_update_from_request
 
+
+
+
+
+
 team_2 = """
-Drifblim @ Heavy-Duty Boots  
-Ability: Unburden  
-EVs: 252 HP / 252 Atk  
-- Acrobatics
+Mew  
+Ability: Synchronize  
+EVs: 252 HP / 252 Def  
+IVs: 0 Atk  
+- Psychic Terrain  
+- Defog  
+- Spikes
 """
 
 player_2 = RandomPlayer(
         battle_format="gen8ubers", team=team_2, max_concurrent_battles=10
     )
+
+
+
+
+
 
 class MaxDamagePlayer(MyPlayer):
 
@@ -110,16 +123,19 @@ class MaxDamagePlayer(MyPlayer):
     def choose_move(self, battle):
         battle2=list(player_2._battles.values())[-1]
 
-        #print all information
         
-        print("turn:",battle._turn)       
+        print("turn:",battle._turn)   
+   
         print("player:")
         self.show_down(battle)
         print("opponent:")
         player_2.show_down(battle2)
-        print("field:",battle._fields,battle._weather)
-        print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions,"\n\n")
-        
+
+
+        print("field:",battle._weather,battle._fields)
+        print(vc.weather_field_vectorize(battle._weather,battle._fields,battle._turn))
+        print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
+        print(vc.side_condition_vectorize(battle._side_conditions,battle._turn),vc.side_condition_vectorize(battle._opponent_side_conditions,battle._turn),"\n\n")
         #self.show_opponent(battle)
 
         if battle.available_moves and np.random.uniform() < 0.8:
@@ -158,8 +174,10 @@ async def main():
 Jirachi @ Air Balloon  
 Ability: Serene Grace  
 EVs: 252 SpA / 252 SpD / 4 Spe  
-IVs: 0 Atk  
-- Gravity
+IVs: 0 Atk   
+- Stealth Rock  
+- Sunny Day
+
 """
     fd=open("test.txt","w")
     sys.stdout=fd

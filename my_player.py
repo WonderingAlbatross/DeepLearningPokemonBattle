@@ -54,6 +54,14 @@ class MyPlayer(Player):
         """
         # Battle messages can be multiline
 
+                # my_handle_message(split_message)
+                # todo: record damage (also crit, anti-type berry) and transmit to building guesser
+                # todo: find if enemy have attacked (!focus punch)
+                # todo: add future sight as side
+                # todo: add outrage/... as encore effect
+                # todo: weather starting time
+
+
         #print(split_messages,"\n")
 
         if (
@@ -152,11 +160,6 @@ class MyPlayer(Player):
                     self.logger.critical("Unexpected error message: %s", split_message)
             elif split_message[1] == "turn":
                 battle._parse_message(split_message)
-
-                # my_handle_message(split_message)
-                # todo: record damage (also crit, anti-type berry) and transmit to building guesser
-                # todo: find if enemy have attacked (!focus punch)
-
                 await self._handle_battle_request(battle)
             elif split_message[1] == "teampreview":
                 battle._parse_message(split_message)
@@ -164,7 +167,19 @@ class MyPlayer(Player):
             elif split_message[1] == "bigerror":
                 self.logger.warning("Received 'bigerror' message: %s", split_message)
             else:
-                battle._parse_message(split_message)
+                self.my_parse_message(battle,split_message)
+                
+                
+            
+
+    def my_parse_message(self,battle,split_message):
+        # ignore things like "['', '-weather', 'RainDance', '[upkeep]']"
+        if split_message[1] == "-weather":
+            if "[upkeep]" in split_message:
+                return 0
+
+        battle._parse_message(split_message)
+
 
 
 
