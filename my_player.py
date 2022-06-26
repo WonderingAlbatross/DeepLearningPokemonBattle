@@ -190,7 +190,7 @@ class MyPlayer(Player):
         ability = mon._mon._ability
         item = mon._mon._item                        
         print(mon._mon._species,stats,ability,item)
-        print(vc.pokemon_vectorize(mon))
+        print(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
         if _mon.active:
             boosts = list(_mon._boosts.values())
             acc = boosts.pop(0)
