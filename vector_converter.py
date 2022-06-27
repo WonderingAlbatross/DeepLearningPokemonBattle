@@ -51,6 +51,9 @@ def modified_move_vector(
 		_counts_oppo_item = True):
 
 	v = np.zeros(100)
+	vclear = np.zeros(100)
+	vclear[0] = 1
+	vclear[4] = 1
 
 	types = (mon._mon._type_1,mon._mon._type_2)
 	oppo_types = (oppo._mon._type_1,oppo._mon._type_2)
@@ -77,6 +80,10 @@ def modified_move_vector(
 			oppo_ability = counts_oppo_ability
 		else:
 			oppo_ability = ""
+	if ability == "trace":
+		ability = oppo_ability
+	if oppo_ability == "trace":
+		oppo_ability = ability
 
 	#p2. modifies item
 	counts_item = _counts_item
@@ -107,11 +114,18 @@ def modified_move_vector(
 			oppo_item = ""
 
 
-	#p3.modifies weathers.etc, move types
+
+	#p3.modifies weathers.etc, move types, pokemontype
 	weather = _weather
 	oppo_weather = _weather
 	field = _field
+	oppo_field = _field
 	movetype = move.type
+	types = mon._mon.types
+	oppo_types = oppo._mon.types
+	effects = mon._mon._effects 
+	oppo_effects = oppo._mon._effects 
+
 	if item == "utilityumbrella":
 		weather = {}
 	if oppo_item == "utilityumbrella":
@@ -119,11 +133,56 @@ def modified_move_vector(
 	if "cloudnine" in (ability,oppo_ability):
 		weather = {}
 		oppo_weather = {}
-	
+	if "airlock" in (ability,oppo_ability):
+		weather = {}
+		oppo_weather = {}	
 
-	#p4 modifies if this is a switch
+	if _is_grounded(mon,field) == False:
+		for f in field:
+			if f.is_terrain():
+				field.remove(f)	
+	if _is_grounded(oppo,field) == False:
+		for f in oppo_field:
+			if f.is_terrain():
+				oppo_field.remove(f)								#test it
+
+
+
+	if item == "protectivepads" or ability == "longreach":
+		v[31] = 0
+
+
+
+
+	#p4. modifies stats
+	m_stats = np.zeros(5)
+	m_stats = pokemon_vectorize(mon,weather,field,_counts_ability = counts_ability, _counts_item = counts_item)[17:22]
+	o_stats = np.zeros(5)
+	o_stats = pokemon_vectorize(oppo,oppo_weather,oppo_field,_counts_ability = oppo_counts_ability, _counts_item = oppo_counts_item)[17:22]
+
+	speed_ratio = (m_stats[4]+0.1) / (o_stats[4]+0.1)
+
+	if speed_ratio >1:
+		speed_ratio = 1 / speed_ratio
+	else:
+		speed_ratio = - speed_ratio
+	if Field.TRICK_ROOM in _field:
+		speed_ratio = - speed_ratio
+
+	#p5 modifies if this is a switch
 	if move == "switch":
-		v = np.zeros(100)
+		v[0] = 7 + speed_ratio
+		if ability == "intimidate":
+			if oppo_ability not in ("scrappy","owntempo","innerfocus","oblivious",):
+				v[13] = -1
+				if oppo_ability == "rattled":
+					v[17] = 2
+		if ability == "shadowtag" and oppo_ability != "shadowtag":	
+			v[42] = 2
+		if ability == "magnetpull" and PokemonType.STELL in oppo_types:
+			v[42] = 2
+		if ability == "arenatrap" and _is_grounded(oppo,field):
+			v[42] = 2
 		if ability == "drought":
 			v[83] = 1
 		if ability == "drizzle":
@@ -145,7 +204,7 @@ def modified_move_vector(
 		if item != "heavydutyboots":
 			if SideCondition.STEALTH_ROCK in side:
 				if ability != "magicguard":
-					v[26] -= PokemonType.ROCK.damage_multiplier(*mon._mon.types) / 8
+					v[26] -= PokemonType.ROCK.damage_multiplier(*types) / 8
 			if _is_grounded(mon,field):
 				if SideCondition.SPIKES in side:
 					if ability != "magicguard":
@@ -172,46 +231,52 @@ def modified_move_vector(
 								if ability == "simple":
 									v[10] -= 1
 
-		return v
 
-	#p5. modiefies if has no effect and accurancy
+
+	#p6. modiefies if has no effect and accurancy
 
 	if "damp" in (ability,oppo_ability):
 		if move._id in ("selfdestruct","explosion","mindblown","mistyexplosion"):
 			return v
+	if "soundproof" in oppo_ability:
+		if move.entry.get("target",{}) != "self":
+			return v
+	if item == "assaultvest":
+		if v[1] == 0 and v[2] == 0:
+			return v
 
+	if move._id == "rest":
+		if ability in ("insomnia","vitalspirit","comatose"):
+			return v
+		if Field.ELECTRIC_TERRAIN in field or Field.MISTY_TERRAIN in field:
+			return v
 
+	if oppo_ability == "wonderguard":
+		if v[1] or v[2] or v[53]:
+			if movetype.damage_multiplier(*types) < 1.5:
+				return v
 
 
 
 	#if opponent can change weather, weather = ...
 	#!! if already ingrain, ingrain is not useful, etc
+	if move != "switch":
+		v = move_vectorize(move)
 
-	v = move_vectorize(move)
-	#p6. modifies stats
-	m_stats = np.zeros(5)
-	m_stats = pokemon_vectorize(mon,weather,field,_counts_ability = counts_ability, _counts_item = counts_item)[17:22]
-	o_stats = np.zeros(5)
-	o_stats = pokemon_vectorize(oppo,oppo_weather,field,_counts_ability = oppo_counts_ability, _counts_item = oppo_counts_item)[17:22]
-	
+
 	
 
 
 	#p7. modifies priority
-	speed_ratio = (m_stats[4]+0.1) / (o_stats[4]+0.1)
-	if speed_ratio >1:
-		v[0] += 1 / speed_ratio
-	else:
-		v[0] -= speed_ratio
+
+	v[0] += speed_ratio
 
 
 
 
 
 
-
-
-	#p8. modiefies power and acc
+	#p8. modiefies power and acc and 
 
 	acc_rate = mon._mon._boosts["accuracy"] - oppo._mon._boosts["evasion"]
 	if acc_rate > 0:
@@ -220,40 +285,266 @@ def modified_move_vector(
 		acc_rate = 3 / ( acc_rate + 3 )
 
 	v[4] *= acc_rate
-
+	if ability == "compoundeyes":
+		v[4] *= 1.3
+	if ability == "hustle" and v[1]:
+		v[4] *= 0.8
 
 	v[4] = max(v[4],1)
 
-		#TBC
-	if oppo_ability == "voltabsorb" and movetype == PokemonType.ELECTRIC:
-		vclear = np.zeros(100)
-		vclear[0] = v[0]
-		vclear[4] = v[4]
-		vvclear[53] = -1/2
-		return vclear
+	#0ko
+
+
+
+
+		
+	if PokemonType.FLYING in oppo_types and move._id == "thousandarrows":
+		damage_multiplier = 1
+	else:
+		if _is_grounded(oppo,field) and movetype == PokemonType.GROUND and PokemonType.FLYING in oppo_types:
+			oppo_types.remove(PokemonType.FLYING)
+		damage_multiplier = movetype.damage_multiplier(*oppo_types)
+
+	if move._id == "flyingpress":
+		damage_multiplier *= PokemonType.FLYING.damage_multiplier(*oppo_types)
+
+	if move._id == "knockoff":
+		if item:
+			if item != "lost" and oppo_ability != "stickyhold":
+				damage_multiplier *= 1.5
+
+	if mon._stats[0] / mon._stats[1] < 1/3:
+		if movetype == PokemonType.GRASS and ability == "overgrow":
+			damage_multiplier *= 1.5
+		if movetype == PokemonType.FIRE and ability == "blaze":
+			damage_multiplier *= 1.5		
+		if movetype == PokemonType.WATER and ability == "torrent":
+			damage_multiplier *= 1.5
+		if movetype == PokemonType.BUG and ability == "swarm":
+			damage_multiplier *= 1.5
+
+	if movetype == PokemonType.WATER:
+		if ability == "waterbubble":
+			damage_multiplier *= 2
+		if oppo_ability == "waterbubble":
+			damage_multiplier *= 0.5
+
+	if movetype in (PokemonType.FIRE,PokemonType.ICE):
+		if oppo_ability == "thickfat":
+			damage_multiplier *= 0.5
+
+	#is stab
+	if movetype in types:
+		if ability == "adaptability":
+			damage_multiplier *= 2
+		else:
+			damage_multiplier *= 1.5
+
+
+
+	if v[1] or v[2] or v[53] or move._id == "thunderwave":
+
+		if damage_multiplier == 0:
+			v = v * vclear 
+
+		if oppo_ability == "voltabsorb" and movetype == PokemonType.ELECTRIC:
+			v = v * vclear 
+			v[53] = -1/2
+		if oppo_ability == "waterabsorb" and movetype == PokemonType.WATER:
+			v = v * vclear 
+			v[53] = -1/2
+		if oppo_ability == "flashfire" and movetype == PokemonType.WATER:
+			v = v * vclear 
+			v[13] = 0.5
+			v[15] = 0.5
+		if oppo_ability == "lightningrod" and movetype == PokemonType.ELECTRIC:
+			v = v * vclear 
+			v[15] = 1
+
+
 
 
 	#p9. modifies side effect
 	if move._id == "yawn":
-		if Effect.YAWN in mon._mon._effects:
-			v[24] = 0.5
-		else:
-			v[24] = 1
+		if Effect.YAWN in oppo_effects:
+			v[69] = 0
+	#effects
+	if Effect.YAWN in effects:
+		v[97] = 1
+	if Effect.YAWN in oppo_effects:
+		v[24] = 1
 
 
-	if ability == "stench" or item in ("kingsrock","razorfang"):
-		v[55] += 0.1
-	if ability == "speedboost":
-		v[10] += 1
-	if oppo_ability == "static":
-		if v[31] == 1 and ability != "limber":
-			v[54] = 0.3
+
+	#contact
+	if v[31] == 1:
+
+		if oppo_ability in ("roughskin","ironbarbs"):
+			v[26] += 1/8 * ( 1 + v[30] )
+		if oppo_item ==  "rockyhelmet":
+			v[26] += 1/6 * ( 1 + v[30] )
+
+		if oppo_ability == "flamebody":
+			v[93] += 1 - 0.7 ** ( 1 + v[30] )
+		if oppo_ability == "static":
+			v[95] += 1 - 0.7 ** ( 1 + v[30] )
+		if oppo_abiliy == "effectspore":
+			if item != "safetygoggles" and ability != "overcoat" and PokemonType.GRASS not in types:
+				v[93] += 1 - 0.9 ** ( 1 + v[30] )
+				v[95] += 1 - 0.9 ** ( 1 + v[30] )
+				v[96] += 1 - 0.9 ** ( 1 + v[30] )
+
+	if oppo_ability == "synchronize":
+		v[93] += v[20]
+		v[95] += v[22]
+		v[96] += v[23]
+	
+#	if deal damage
+	if v[1] or v[2] or v[53]:
+		if ability == "stench" or item in ("kingsrock","razorfang"):
+			v[55] += 0.1 * ( 1 + v[30] )
+		if ability == "speedboost":
+			v[10] += 1
+		if ability == "serenegrace":
+			v[13:25] *= 2 							#test this
+			v[55:70] *= 2
+
+
+
+#side-effect-inmune
+
 	if oppo_ability in ("battlearmor","shellarmor"):
 		v[5] = -6
-	if oppo_ability == "limber":
+
+
+
+	if oppo_ability == "shielddust":
+		if v[1] or v[2]:
+			v[13:25] *= 0
+			v[55:70] *= 0
+
+
+	if Effect.HEAL_BLOCK in mon_effects:
+		if v[26] > 0:
+			v[26] = 0
+		if v[27] > 0:
+			v[27] = 0
+	if oppo_ability == "rockhead":
+		if v[27] < 0:
+			v[27] = 0
+	if oppo_ability == "liquidooze":
+		if v[27] > 0:
+			v[27] *= -1
+	if ability == "magicguard":
+		if v[27] < 0:
+			v[27] = 0
+
+	if ability == "truant":
+		v[39] = 0
+	if oppo_ability == "suctioncups":
+		v[39] = 0
+	if PokemonType.GHOST in oppo_types:
+		v[42] = 0
+	if oppo_ability == "innerfocus":
+		v[55] = 0
+	if oppo_ability == "owntempo":
+		v[56] = 0
+	if oppo_ability == "oblivious" or Effect.TAUNT in oppo_effects:
+		v[68] = 0
+	if ability == "shedskin":
+		v[80] += 1/3
+
+
+	if oppo_ability == "hypercutter":
+		if v[13] < 0:
+			v[13] = 0
+	if oppo_ability == "keeneye":
+		if v[18] < 0:
+			v[18] = 0
+	if oppo_ability in ("clearbody","whitesmoke","fullmetalbody"):
+		for i in range(0,7):
+			if v[13+i] < 0:
+				v[13+i] = 0
+
+	if oppo_ability in ("waterveil","waterbubble"):
+		v[20] = 0
+	if ability in ("waterveil","waterbubble"):
+		v[93] = 0
+	if oppo_ability == "magmaarmor":
+		v[21] = 0
+	if ability == "magmaarmor":
+		v[94] = 0
+	if oppo_ability == "limber" or PokemonType.ELECTRIC in oppo_types:
 		v[22] = 0
+	if ability == "limber" or PokemonType.ELECTRIC in types:
+		v[95] = 0
+	if oppo_ability in ("immunity","pastelveil"):
+		v[23] = 0
+	if PokemonType.POISON in oppo_types or PokemonType.STEEL in oppo_types:
+		if ability != "corrosion":
+			v[23] = 0
+	if ability in ("immunity","pastelveil"):
+		v[96] = 0
+	if PokemonType.POISON in types or PokemonType.STEEL in types:
+		v[96] = 0
+	if oppo_ability in ("insomnia","vitalspirit"):
+		v[24] = 0
+		v[69] = 0
+	if ability in ("insomnia","vitalspirit"):
+		v[97] = 0	
+	if mon._mon_status:
+		v[93:97] *= 0
+
+
+	#weather,field
+	if Field.ELECTRIC_TERRAIN in field:
+		if movetype == PokemonType.ELECTRIC:
+			v[1:3] *= 1.3
+			v[97] = 0					
+	if Field.ELECTRIC_TERRAIN in oppo_field:
+		v[24] = 0
+		v[69] = 0
+		if move._id == "risingvoltage":
+			v[1:3] *= 2
+
+	if Field.MISTY_TERRAIN in field:
+		v[93:97] *= 0
+	if Field.MISTY_TERRAIN in oppo_field:		
+		v[20:25] *= 0
+		v[56] = 0
+		v[69] = 0
+		if movetype == PokemonType.DRAGON:
+			v[1:3] *= 0.5
+
+	if Effect.SAFEGUARD in oppo_effects or oppo_ability == "comatose":
+		v[20:25] *= 0
+		v[56] = 0
+		v[69] = 0
+	if Effect.SAFEGUARD in mon_effects or ability == "comatose":
+		v[93:97] *= 0
+	
+	
+
+
+	if move._id == "rest":
+		v[97] = 1
 
 	#p10 modifies one-time effect (berry,beserker,etc)
+	if v[1] or v[2] or v[53]:
+		if oppo_item == "redcard" and ability != "suctioncups":
+			v[38] = 1
+		if oppo_item == "ejectbutton":
+			v[39] = 1
+			v[38] = 0
+	if item == "ejectpack":
+		for i in range(0,7):
+			if v[6+i]<0:
+				v[38] = 1
+	if oppo_item == "ejectpack":
+		for i in range(0,7):
+			if v[13+i]<0:
+				v[39] = 1
+
 
 	return v
 
@@ -316,92 +607,95 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			item = ""
 
 	types = (mon._mon._type_1,mon._mon._type_2)
-
+	dpt = 0 
+	hpt = 0 								#heal 1/16 per turn
 	v[0] = mon._stats[0] / mon._stats[1]
 	v[1:6] = mon._stats[2:7]
+	v[17:22] = mon._stats[2:7]
 	if ability == "regenerator":
 		v[7] = 2
 	if ability == "naturalcure":
 		v[7] = 1
 	if mon._mon._status:
+		if ability == "guts":
+			v[17] *= 1.5 							#test this
+		if ability == "marvelscale":
+			v[18] *= 1.5 	
 		_status = mon._mon._status.name
 		v[6] = 1
 		if _status == "BRN":
 			v[10] = 1
-			if ability != "magicguard":
-				v[8] -= 1							#heal 1/16 per turn
+			dpt += 1							
 		if _status == "FRZ":
 			v[9] = 4
 		if _status == "PAR":			
 			v[9] = 1/4
 			v[11] = 1
-		if _status == "PSN" and ability != "magicguard":
+		if _status == "PSN":
 			if ability == "poisonheal":
-				v[8] += 2
+				hpt += 2
 			else:
-				v[8] -= 2
+				dpt = 2
 		if _status == "SLP":
 			v[9] = 3 - mon._mon._status_counter
-		if _status == "TOX" and ability != "magicguard":
+		if _status == "TOX":
 			if ability == "poisonheal":
-				v[8] += 2
+				hpt += 2
 			else:
-				v[8] -= ( 1 + mon._mon._status_counter )
+				dpt += ( 1 + mon._mon._status_counter )
 
 	if item in ("leftover","blacksludge"):
-		v[8] += 1	
-	if item == "stickybarb" and ability != "magicguard":
-		v[8] -= 2	
-	if item in ("choiceband","choicespecs","choicescarf"):
+		hpt += 1	
+	if item == "stickybarb":
+		dpt += 2	
+	if item == "choiceband" or ability == "gorillatactics":
+		v[17] *= 1.5
 		v[12] = 10
-	if ability == "gorillatactics":
+	if item == "choicespecs":
+		v[19] *= 1.5
 		v[12] = 10
-	if item == "focussash":
-		v[13] = 1
-	if ability == "sturdy":
+	if item == "choicescarf":
+		v[21] *= 1.5
+		v[12] = 10
+	if item == "assaultvest":
+		v[20] *= 1.5
+	if item == "eviolite":
+		v[18] *= 1.5
+		v[20] *= 1.5
+	if item == "focussash" or ability == "sturdy":
 		v[13] = 1
 	if mon._mon._species in ("mimikyu","eiscue"): #test it
 		v[14] = 1
 
-	if ability not in ("magicguard","overcoat") and item != "safetygoggles":
+	if ability != "overcoat" and item != "safetygoggles":
 		if Weather.SANDSTORM in weather:
 			if PokemonType.ROCK not in types:
 				if PokemonType.STEEL not in types:
 					if PokemonType.GROUND not in types:
 						if ability not in ("sandforce","sandveil","sandrush"):
-							v[8] -= 1
+							dpt += 1
 		if Weather.HAIL in weather:
 			if PokemonType.ICE not in types:
 				if ability not in ("icebody","snowcloak"):
-					v[8] -= 1
+					dpt += 1
 	if Field.GRASSY_TERRAIN in field:
 		if _is_grounded(mon,field):
-			v[8] += 1
+			hpt += 1
 
-
-	for i in range(0,5):
-		v[17+i] = v[1+i]
-
-
-
+	effects = mon._mon._effects 
 	if mon._mon.active:
 
-		effects = mon._mon._effects 
-
 		if Effect.AQUA_RING in effects:
-			v[8] += 1
+			hpt += 1
 		if Effect.BIND in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.BIND]
 		if Effect.CLAMP in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.CLAMP]
 		if Effect.CONFUSION in effects:
 			v[9] += 1/3
-			if ability != "magicguard":
-				v[8] -= 1
+			dpt += 1
 		if Effect.CURSE in effects:
 			v[8] -= 4 
 	#	if Effect.DESTINY_BOND in effects: -200%hp side effect
@@ -409,21 +703,17 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			if v[12] == 0:
 				v[12] = 3 - effects[Effect.ENCORE]
 		if Effect.FIRE_SPIN in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.FIRE_SPIN]		
 		if Effect.INFESTATION in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.INFESTATION]
 		if Effect.INGRAIN in effects:
-			v[8] += 1
+			hpt += 1
 		if Effect.LEECH_SEED in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 		if Effect.MAGMA_STORM in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.MAGMA_STORM]
 		if Effect.NO_RETREAT in effects:
 			v[15] = 10
@@ -438,28 +728,23 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		if Effect.PERISH3 in effects:
 			v[16] = 4
 		if Effect.SAND_TOMB in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.SAND_TOMB]
 		if Effect.SNAP_TRAP in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.SNAP_TRAP]
 		if Effect.SUBSTITUTE in effects:
 			v[14] = 1
 		if Effect.THUNDER_CAGE in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.THUNDER_CAGE]
 		if Effect.TRAPPED in effects:
 			v[15] = 10	
 		if Effect.WHIRLPOOL in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.WHIRLPOOL]
 		if Effect.WRAP in effects:
-			if ability != "magicguard":
-				v[8] -= 2
+			dpt += 2
 			v[15] = 5 - effects[Effect.WRAP]
 		
 		boosts = list(mon._mon._boosts.values())
@@ -468,11 +753,28 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		for i in range(0,5):
 			v[17+i] = v[1+i]*boosts_to_multi(boosts[i])
 
+	if Weather.RAINDANCE in weather:
+		if ability == "swiftswim":
+			v[21] *= 2
+		if ability == "raindish":
+			hpt += 1
+	if Weather.SUNNYDAY in weather:
+		if ability == "chlorophyll":
+			v[21] *= 2
+	if ability in ("hugepower","purepower"):
+		v[17] *= 2
+	if ability == "hustle":
+		v[17] *= 1.5
 	if item == "laggingtail":
 		if Field.TRICK_ROOM in field:
 			v[21] = 2000
 		else:
 			v[21] = 1
+
+	if Effect.HEAL_BLOCK not in effects:
+		v[8] += hpt / 16
+	if ability != "magicguard":
+		v[8] -= dpt / 16
 
 
 
@@ -719,7 +1021,8 @@ def move_vectorize(move:Move):
 	if move._id == "banefulbunker":
 		v[23] = 0.3
 
-	# slot 25 empty
+	if move._id in ("boltbeak","fishiousrend"):
+		v[25] = 1
 
 	# heal, absorb and recoil            ! pollenpuff / healpulse / floralhealing
 	#self%
@@ -814,10 +1117,9 @@ def move_vectorize(move:Move):
 	if move._id in ("naturesmadness","superfang"):
 		v[53] = 1.2*level
 
-# this slot53 for passive damage side effects	
+# this slot53 for passive damage side effects	slot54 empty
 
-	if move._id == "rest":			#also when yawned
-		v[54] = 1
+
 
 
 
@@ -937,6 +1239,11 @@ def move_vectorize(move:Move):
 	if move._id in ("shellsidearm","photongeyser"):
 		v[92] = 0.5
 
+
+#93"brn":#94"frz":#95"par":#96"psn":#97"slp":
+
+	if move._id == "rest":
+		v[97] = 1
 	
 	
 	return v
