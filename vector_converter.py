@@ -34,6 +34,47 @@ antitypeberry = {
 	"chilanberry":PokemonType.NORMAL,
 	"roseliberry":PokemonType.FAIRY
 	}
+typeboostitem = {
+	"charcoal":PokemonType.FIRE,
+	"mysticwater":PokemonType.WATER,
+	"magnet":PokemonType.ELECTRIC,
+	"miracleseed":PokemonType.GRASS,
+	"nevermeltice":PokemonType.ICE,
+	"blackbelt":PokemonType.FIGHTING,
+	"poisonbarb":PokemonType.POISON,
+	"softsand":PokemonType.GROUND,
+	"sharpbeak":PokemonType.FLYING,
+	"twistedspoon":PokemonType.PSYCHIC,
+	"silverpowder":PokemonType.BUG,
+	"hardstone":PokemonType.ROCK,
+	"spelltag":PokemonType.GHOST,
+	"dragonfang":PokemonType.DRAGON,
+	"blackglasses":PokemonType.DARK,
+	"metalcoat":PokemonType.STEEL,
+	"silkscarf":PokemonType.NORMAL,
+	"waveincense":PokemonType.WATER,
+	"seaincense":PokemonType.WATER,
+	"oddincense":PokemonType.PSYCHIC,
+	"roseincense":PokemonType.GRASS,
+	"rockincense":PokemonType.ROCK,
+	"flameplate":PokemonType.FIRE,
+	"splashslate":PokemonType.WATER,	
+	"zapplate":PokemonType.ELECTRIC,
+	"meadowplate":PokemonType.GRASS,
+	"icicleplate":PokemonType.ICE,
+	"fistplate":PokemonType.FIGHTING,
+	"toxicplate":PokemonType.POISON,
+	"earthplate":PokemonType.GROUND,
+	"skyplate":PokemonType.FLYING,
+	"mindplate":PokemonType.PSYCHIC,
+	"insectplate":PokemonType.BUG,
+	"stoneplate":PokemonType.ROCK,
+	"spookyplate":PokemonType.GHOST,
+	"dracoplate":PokemonType.DRAGON,
+	"dreadplate":PokemonType.DARK,
+	"ironplate":PokemonType.STEEL,
+	"pixieplate":PokemonType.FAIRY
+}
 giantberry = ("aguavberry","figyberry","iapapaberry","magoberry","wikiberry")
 brokenability = ("battlearmor","clearbody","damp","flashfire","hypercutter","innerfocus","keeneye",
 	"levitate","marvelscale","sandveil","shielddust","soundproof","stickyhold","sturdy","suctioncups",
@@ -43,7 +84,7 @@ brokenability = ("battlearmor","clearbody","damp","flashfire","hypercutter","inn
 	"multiscale","sapsipper","telepathy","wonderskin","bulletproof","furcoat","overcoat","dazzling",
 	"disguise","queenlymajesty","fluffy","mirrorarmor","punkrock","icescales","iceface",
 	"flowergift","aromaveil","sweetveil","flowerveil")
-
+# veils work differently in double!
 crushmove = ("stomp","bodyslam","dragonrush","heatcrash","heavyslam","steamroller","flyingpress","maliciousmoonsault")
 
 def modified_move_vector(
@@ -69,9 +110,9 @@ def modified_move_vector(
 	counts_ability = _counts_ability
 	counts_oppo_ability = _counts_oppo_ability
 	if "neutralizinggas" in (ability,oppo_ability):
-		if ability not in ("comatose","asone"):
+		if ability not in ("comatose","asoneglastrier","asonespectrier"):
 			counts_ability = False
-		if oppo_ability not in ("comatose","asone"):
+		if oppo_ability not in ("comatose","asoneglastrier","asonespectrier"):
 			counts_oppo_ability = False	
 	if counts_ability is True:
 		ability = mon._mon._ability		
@@ -183,7 +224,6 @@ def modified_move_vector(
 
 
 
-
 	if ability == "heavymetal":
 		weight *= 2
 	if ability == "lightmetal":
@@ -230,14 +270,14 @@ def modified_move_vector(
 
 
 
-	speed_ratio = (m_stats[4]+0.1) / (o_stats[4]+0.1)
+	speed_ratio = (m_stats[4]+0.01) / (o_stats[4]+0.01)
 
 	if speed_ratio >1:
 		speed_ratio = ( 1 - 1 / speed_ratio ) /2
 	else:
 		speed_ratio = ( speed_ratio - 1 ) /2
 	if Field.TRICK_ROOM in _field:
-		speed_ratio = - speed_ratio
+		speed_ratio *= -1 
 
 	#p5 modifies if this is a switch
 	if move == "switch":
@@ -260,6 +300,10 @@ def modified_move_vector(
 				v[8] = 1
 			else:
 				v[6] = 1
+		if ability == "intrepidsword":
+			v[6] = 1
+		if ability == "dauntlessshield":
+			v[7] = 1		
 		if ability == "drought":
 			v[83] = 1
 		if ability == "drizzle":
@@ -308,9 +352,68 @@ def modified_move_vector(
 		else:
 			pdmg -= v[26]	
 
-	#p6. modifies priority
+	#p6. modifies type and priority
+	if move._id == "weatherball" and weather:
+		v[2] *= 2
+		if Weather.SUNNYDAY in weather:
+			movetype = PokemonType.FIRE
+		if Weather.RAINDANCE in weather:
+			movetype = PokemonType.WATER
+		if Weather.SANDSTORM in weather:
+			movetype = PokemonType.ROCK
+		if Weather.HAIL in weather:
+			movetype = PokemonType.ICE
+
+	if move._id == "terrainpulse":
+		if Field.ELECTRIC_TERRAIN in _field:
+			v[2] *= 2
+			movetype = PokemonType.ELECTRIC
+		if Field.GRASSY_TERRAIN in _field:
+			v[2] *= 2
+			movetype = PokemonType.GRASS
+		if Field.MISTY_TERRAIN in _field:
+			v[2] *= 2
+			movetype = PokemonType.FAIRY
+		if Field.PSYCHIC_TERRAIN in _field:
+			v[2] *= 2
+			movetype = PokemonType.PSYCHIC
+
+	if movetype == PokemonType.NORMAL:
+		if ability == "refrigerate":
+			v[1:3] *= 1.2
+			movetype = PokemonType.ICE
+		if ability == "pixilate":
+			v[1:3] *= 1.2
+			movetype = PokemonType.FAIRY	
+		if ability == "aerilate":
+			v[1:3] *= 1.2
+			movetype = PokemonType.FLYING
+		if ability == "galvanize":
+			v[1:3] *= 1.2
+			movetype = PokemonType.ELECTRIC	
+
+	if ability == "liquidvoice" and v[32]:
+		movetype = PokemonType.WATER
+
+
+
+	if ability == "normalize" and movetype != PokemonType.NORMAL:
+		movetype = PokemonType.NORMAL
+		v[1:3] *= 1.2
+
+	if ability in ("protean","libero"):
+		types = ( movetype )								#test this
+
 	if ability == "prankster" and move.entry["category"] == "Status":
 		v[0] += 1
+	if ability == "galewings" and movetype == PokemonType.FLYING and mon._stats[0] == mon._stats[1]:
+		v[0] += 1
+	if ability == "triage" and (heal > 0 or v[27] > 0):
+		v[0] += 3
+
+	if item == "custapberry" and mon._stats[0] / mon._stats[1] < 1/4:
+		speed_ratio = 0.499
+		v[98] = 0
 
 
 	#p7. modiefies if has no effect and accurancy
@@ -320,6 +423,11 @@ def modified_move_vector(
 		v[31] = 0
 	if move._id in ("solarbeam","solarblade") and Weather.SUNNYDAY in weather:
 		v[35] = 0
+
+	if item == "powerherb" and v[35]:
+		v[35] = 0
+		v[98] = 1
+
 	if ability == "truant":
 		v[37] = 1
 
@@ -336,11 +444,15 @@ def modified_move_vector(
 			v[1:] *= 0
 		if ability == "prankster" and move.entry["category"] == "Status" and PokemonType.DARK in oppo_types:
 			v[1:] *= 0
-		if v[0] > 0.1 and Field.PSYCHIC_TERRAIN in oppo_field:
+		if v[0] > 0 and Field.PSYCHIC_TERRAIN in oppo_field or oppo_ability in ("queenlymajesty","dazzling"):
 			v[1:] *= 0
+	
+	if oppo_ability == "bulletproof" and "bullet" in move.entry["flags"]:
+		v[1:] *= 0
+	if Field.GRAVITY in _field and "gravity" in move.entry["flags"]:
+		v[1:] *= 0
 
-
-	if item == "assaultvest":
+	if item == "assaultvest" or Effect.TAUNT in effects:
 		if move.entry["category"] == "Status":
 			v[1:] *= 0
 
@@ -349,7 +461,7 @@ def modified_move_vector(
  			v[1:] *= 0
 
 	if move._id == "rest":
-		if ability in ("insomnia","vitalspirit","comatose"):
+		if ability in ("insomnia","vitalspirit","sweetveil","comatose"):
 			v[1:] *= 0
 		if Field.ELECTRIC_TERRAIN in field or Field.MISTY_TERRAIN in field:
 			v[1:] *= 0
@@ -367,7 +479,7 @@ def modified_move_vector(
 
 	if oppo_ability == "wonderguard":
 		if v[1] or v[2] or v[53]:
-			if movetype.damage_multiplier(*oppo_types) < 1.5:
+			if movetype.damage_multiplier(*oppo_types) < 1.1:
 				v[1:] *= 0
 	if oppo_ability == "sturdy" and "ohko" in move.entry:
 		v[1:] *= 0
@@ -430,9 +542,9 @@ def modified_move_vector(
 
 
 	if move._id == "grassknot":
-		v[2] = grassknowpower(oppo_weight)
+		v[2] = grassknotpower(oppo_weight)
 	if move._id == "lowkick":
-		v[1] = grassknowpower(oppo_weight)
+		v[1] = grassknotpower(oppo_weight)
 	if move._id in ("heatcrash","heavyslam"):
 		v[1] = heatcrashpower(weight,oppo_weight)
 	if move._id == "gyroball":
@@ -441,38 +553,10 @@ def modified_move_vector(
 		v[2] = electroballpower(m_stats[4],o_stats[4])
 
 
-	if move._id == "weatherball" and weather:
-		v[2] *= 2
-		if Weather.SUNNYDAY in weather:
-			movetype = PokemonType.FIRE
-		if Weather.RAINDANCE in weather:
-			movetype = PokemonType.WATER
-		if Weather.SANDSTORM in weather:
-			movetype = PokemonType.ROCK
-		if Weather.HAIL in weather:
-			movetype = PokemonType.ICE
-
-	if move._id == "terrainpulse":
-		if Field.ELECTRIC_TERRAIN in _field:
-			v[2] *= 2
-			movetype = PokemonType.ELECTRIC
-		if Field.GRASSY_TERRAIN in _field:
-			v[2] *= 2
-			movetype = PokemonType.GRASS
-		if Field.MISTY_TERRAIN in _field:
-			v[2] *= 2
-			movetype = PokemonType.FAIRY
-		if Field.PSYCHIC_TERRAIN in _field:
-			v[2] *= 2
-			movetype = PokemonType.PSYCHIC
 
 	if move._id == "facade":
 		if mon._mon._status.name in ("BRN","PAR","TOX","PSN"):
 			v[1] *= 2
-
-	if ability == "normalize" and movetype != PokemonType.NORMAL:
-		movetype = PokemonType.NORMAL
-		v[1:3] *= 1.2
 
 	if ability == "technician":
 		if v[1] <= 60:
@@ -480,15 +564,18 @@ def modified_move_vector(
 		if v[2] <= 60:
 			v[2] *= 1.5
 
-	if ability == "skilllink" and v[30] > 2:
-		v[30] = 4
-
-	if move._id in ("tripleaxel","triplekick"):
-		v[1:3] *= 5.23
-	else:
-		v[1:3] *= 1 + v[30]
 
 
+
+
+	if move._id in ("naturesmadness","superfang"):
+		v[53] = oppo._stats[0] / 2
+	if move._id == "endeavor":
+		v[53] = min( 0, oppo._stats[0] - mon._stats[0] )
+	if move._id == "finalgambit":
+		v[53] = mon._stats[0]
+	if move.entry.get("volatileStatus","") == "partiallytrapped":
+		v[53] = oppo._stats[1] / 8
 
 	if mon._mon._status.name == "BRN" and ability != "guts" and move._id != "facade":
 		v[1] /= 2
@@ -508,6 +595,8 @@ def modified_move_vector(
 #		v[4] = 10
 #		v[1:3] *= 2
 
+	v[53] /= oppo._stats[1] 														#turn to %
+	
 
 	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
 		if v[4] == 10:
@@ -552,6 +641,9 @@ def modified_move_vector(
 				if oppo_item in ("brightpowder","laxincense"):
 					v[4] *= 0.9
 				v[4] = max(v[4],1)
+	if item == "blunderpolicy":
+		v[10] += 2 * (1 - v[4])
+		v[98] = 1
 		
 	if mon._mon._status.name == "FRZ" and v[34] == 0:
 		v[4] *= 0.25
@@ -567,6 +659,7 @@ def modified_move_vector(
 		v[4] *= 0.5
 
 	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
+
 		if "ohko" in move.entry:
 			v[1] = 10
 			if move._id == "sheercold":
@@ -575,7 +668,7 @@ def modified_move_vector(
 			else:
 				if movetype.damage_multiplier(*oppo_types) == 0:
 					v[1] = 0
-		else:
+		else:			
 			if PokemonType.FLYING in oppo_types and (move._id == "thousandarrows" or oppo_item == "ironball"):
 				damage_multiplier = 1
 			else:
@@ -589,21 +682,46 @@ def modified_move_vector(
 				if damage_multiplier == 0:
 					v = v * vclear 
 			
+			if move._id == "flyingpress":
+				damage_multiplier *= PokemonType.FLYING.damage_multiplier(*oppo_types)
+
+
+			if oppo_item == "weaknesspolicy" and damage_multiplier > 1.5:
+				v[13] += 2
+				v[15] += 2
+				v[99] = 1
+
 			if ability == "tintedlens" and damage_multiplier < 0.9:
 				damage_multiplier *= 2
 			if oppo_ability in ("filter","solidrock","prismarmor") and damage_multiplier > 1.1:
 				damage_multiplier *= 0.75
 
+			if ability == "neuroforce" and damage_multiplier > 1.1:
+				damage_multiplier *= 1.25
+			if item == "expertbelt" and damage_multiplier > 1.4:
+				damage_multiplier *= 1.20
 
 
-			if move._id == "flyingpress":
-				damage_multiplier *= PokemonType.FLYING.damage_multiplier(*oppo_types)
 
 
+
+			if ability == "parentalbond":
+				v[30] = 1 + v[30] * 2
+				damage_multiplier *= 1.25
+				v[53] *= 1.25
+			if ability == "skilllink" and v[30] > 2.1:
+				damage_multiplier = 4
+			if move._id in ("tripleaxel","triplekick"):
+				damage_multiplier *= 5.23
+			else:
+				damage_multiplier *= 1 + v[30]
+			
 			if move._id == "knockoff":
-				if oppo._mon._item:
-					if oppo._mon._item != "lost" and oppo_ability != "stickyhold":
-						damage_multiplier *= 1.5
+				if oppo._mon._item and oppo._mon._item != "lost":
+					damage_multiplier *= 1.5
+
+			if move._id in ("solarbeam","solarblade") and Weather.RAINDANCE in weather:
+				damage_multiplier *= 0.5
 
 			if move._id == "risingvoltage" and Field.ELECTRIC_TERRAIN in oppo_field:
 				damage_multiplier *= 2
@@ -615,26 +733,8 @@ def modified_move_vector(
 				damage_multiplier *= 1.5
 
 
-			if move._id in ("solarbeam","solarblade") and Weather.RAINDANCE in weather:
-				damage_multiplier *= 0.5
 
-			if ability == "rivalry":
-				if mon._mon._gender == PokemonGender.MALE:
-					if oppo._mon._gender == PokemonGender.MALE:
-						damage_multiplier *= 1.25
-					else:
-						if oppo._mon._gender == PokemonGender.FEMALE:
-							damage_multiplier *= 0.75
-				if mon._mon._gender == PokemonGender.FEMALE:
-					if oppo._mon._gender == PokemonGender.FEMALE:
-						damage_multiplier *= 1.25
-					else:
-						if oppo._mon._gender == PokemonGender.MALE:
-							damage_multiplier *= 0.75
 
-			if ability == "sandforce" and Weather.SANDSTORM in weather:
-				if movetype in (PokemonType.GROUND,PokemonType.ROCK,PokemonType.STEEL):
-					damage_multiplier *= 1.3
 
 			if mon._stats[0] / mon._stats[1] < 1/3:
 				if movetype == PokemonType.GRASS and ability == "overgrow":
@@ -646,12 +746,32 @@ def modified_move_vector(
 				if movetype == PokemonType.BUG and ability == "swarm":
 					damage_multiplier *= 1.5
 
+
+			if item in typeboostitem:
+				if typeboostitem[item] == movetype:
+					damage_multiplier *= 1.2
+			if oppo_item in antitypeberry:
+				if typeboostitem[item] == movetype:
+					damage_multiplier *= 0.5
+					v[99] = 1	
+					if oppo_ability == "cheekpouch":
+						v[53] -= 1/3
+			if movetype == PokemonType.DARK:
+				if "darkdura" in (ability,oppo_ability):
+					if "aurabreak" in (ability,oppo_ability):
+						damage_multiplier *= 0.75
+					else:
+						damage_multiplier *= 4/3			
 			if movetype == PokemonType.DRAGON:
 				if Field.MISTY_TERRAIN in oppo_field:
 					damage_multiplier *= 0.5
+				if ability == "dragonsmaw":
+					damage_multiplier *= 1.5
 			if movetype == PokemonType.ELECTRIC:
 				if Field.ELECTRIC_TERRAIN in field:
 					damage_multiplier *= 1.3
+				if ability == "transistor":
+					damage_multiplier *= 1.5
 				if oppo_ability == "voltabsorb":
 					v = v * vclear 
 					v[53] = -1/2
@@ -661,6 +781,12 @@ def modified_move_vector(
 				if oppo_ability == "motordrive":
 					v = v * vclear 
 					v[17] = 1	
+			if movetype == PokemonType.FAIRY:
+				if "fairydura" in (ability,oppo_ability):
+					if "aurabreak" in (ability,oppo_ability):
+						damage_multiplier *= 0.75
+					else:
+						damage_multiplier *= 4/3
 			if movetype == PokemonType.FIRE:
 				if Weather.SUNNYDAY in oppo_weather:
 					damage_multiplier *= 1.5
@@ -670,6 +796,8 @@ def modified_move_vector(
 					damage_multiplier *= 0.5
 				if oppo_ability == "dryskin":
 					damage_multiplier *= 1.25
+				if oppo_ability == "fluffy":
+					damage_multiplier *= 2
 				if Effect.FLASH_FIRE in effects:
 					damage_multiplier *= 1.5
 				if oppo_ability == "flashfire":
@@ -690,7 +818,10 @@ def modified_move_vector(
 					damage_multiplier *= 0.5
 			if movetype == PokemonType.PSYCHIC:
 				if Field.PSYCHIC_TERRAIN in field:
-					damage_multiplier *= 1.3		
+					damage_multiplier *= 1.3	
+			if movetype == PokemonType.STEEL:
+				if ability in ("steelworker","steelyspirit"): 		#"steelyspirit" work for team in double
+					damage_multiplier *= 1.5			
 			if movetype == PokemonType.WATER:
 				if Weather.SUNNYDAY in oppo_weather:
 					damage_multiplier *= 0.5
@@ -709,6 +840,8 @@ def modified_move_vector(
 				if oppo_ability == "stormdrain":
 					v = v * vclear 
 					v[15] = 1
+
+
 		
 
 
@@ -725,6 +858,23 @@ def modified_move_vector(
 			if ability == "ironfist":
 				if "punch" in move.entry["flags"]:
 					damage_multiplier *= 1.2
+			if ability == "strongjaw":
+				if "bite" in move.entry["flags"]:
+					damage_multiplier *= 1.5
+			if ability == "megalauncher":
+				if "pulse" in move.entry["flags"]:
+					damage_multiplier *= 1.5
+					v[53] *= 1.5
+			if v[31]:
+				if ability == "toughclaws":
+					damage_multiplier *= 1.3
+				if oppo_ability == "fluffy":
+					damage_multiplier *= 0.5
+			if v[32]:
+				if ability == "punkrock":
+					damage_multiplier *= 1.3				
+				if oppo_ability == "punkrock":
+					damage_multiplier *= 0.5
 
 			if ability == "reckless":
 				if "recoil" in move.entry or "hasCrashDamage" in move.entry:
@@ -732,6 +882,31 @@ def modified_move_vector(
 			if oppo_ability in ("multiscale","shadowshield"):
 				if oppo._stats[1] == oppo._stats[0]:
 					damage_multiplier *= 0.5
+			if oppo_ability == "furcoat" and move.entry["category"] == "Physical":
+				damage_multiplier *= 0.5
+				v[53] /= 2
+			if oppo_ability == "icescales" and move.entry["category"] == "Special":
+				damage_multiplier *= 0.5
+				v[53] /= 2
+
+			if ability == "rivalry":
+				if mon._mon._gender == PokemonGender.MALE:
+					if oppo._mon._gender == PokemonGender.MALE:
+						damage_multiplier *= 1.25
+					else:
+						if oppo._mon._gender == PokemonGender.FEMALE:
+							damage_multiplier *= 0.75
+				if mon._mon._gender == PokemonGender.FEMALE:
+					if oppo._mon._gender == PokemonGender.FEMALE:
+						damage_multiplier *= 1.25
+					else:
+						if oppo._mon._gender == PokemonGender.MALE:
+							damage_multiplier *= 0.75
+
+			if ability == "sandforce" and Weather.SANDSTORM in weather:
+				if movetype in (PokemonType.GROUND,PokemonType.ROCK,PokemonType.STEEL):
+					damage_multiplier *= 1.3
+
 
 			if item == "lifeorb":
 				damage_multiplier *= 1.3
@@ -759,9 +934,26 @@ def modified_move_vector(
 				o_stats[3] = o_stats[1]
 
 			damage_multiplier *= 0.925 # randomness
+
 			v[1] *=  ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / o_stats[1] / oppo._stats[1] * damage_multiplier
 			v[2] *= ( 2 * mon._mon._level + 10) / 250 * m_stats[2] / o_stats[3] / oppo._stats[1] * damage_multiplier
-			v[53] /= oppo._stats[1]
+			
+			if oppo._stats[0] == oppo._stats[1]:
+				if oppo_item == "focussash":
+					if v[1] > 1:
+						v[1] = 0.999
+						v[99] = 1
+					if v[2] > 1:
+						v[2] = 0.999
+						v[99] = 1
+				if oppo_ability == "sturdy":
+					if v[1] > 1:
+						v[1] = 0.999
+					if v[2] > 1:
+						v[2] = 0.999
+
+
+
 
 		if pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[14]:
 			sub_damage =  v[1]+v[2]+v[53]
@@ -771,23 +963,23 @@ def modified_move_vector(
 					if v[30]:
 						v[1] -= 1/4
 					else:
-						v[1:3] *= 0
-						v[53] = 0
+						v[1:3] *= 0.001
+						v[53] = 0.001
 				else:
 					v[54] = v[1]+v[2]+v[53]
-					v[1:3] *= 0
-					v[53] = 0
+					v[1:3] *= 0.001
+					v[53] = 0.001
 				if move.entry["category"] == "Status":
 					v = v * vc
 			else: 
 				if oppo._mon._species == "mimikyu":
 					if v[1]+v[2]+v[53]:
-						v[1:3] *= v[30] / ( 1 + v[30] )
+						v[1:3] *= v[30] / ( 1.001 + v[30] )
 						v[53] = 1/8
 						v[54] = 1
 				if oppo._mon._species == "eiscue":
 					if move.entry["category"] == "Physical":
-						v[1] *= v[30] / ( 1 + v[30] )
+						v[1] *= v[30] / ( 1.001 + v[30] )
 						v[54] = 1
 		
 
@@ -806,13 +998,15 @@ def modified_move_vector(
 	if oppo_ability in ("battlearmor","shellarmor") or SideCondition.LUCKY_CHANT in oppo_side:
 		v[5] = 0
 	else:
+		if ability == "merciless" and oppo._mon._status.name in ("TOX","PSN"):
+			v[5] = 3
 		if ability == "superluck":
 			v[5] += 1
 		if item in ("scopelens","razorclaw"):
 			v[5] += 1
 		if Effect.FOCUS_ENERGY in effects:
 			v[5] += 2
-		if mon._mon._species in ("farfetchd","farfetchdgalar","sirfetchd") and item == "Leek":
+		if mon._mon._species in ("farfetchd","farfetchdgalar","sirfetchd") and item == "leek":
 			v[5] += 2
 		if mon._mon._species == "chansey" and item == "luckypunch":
 			v[5] += 2
@@ -851,6 +1045,10 @@ def modified_move_vector(
 
 
 	#p9. modifies side effect
+	v[6:20] *= 1 + v[30]
+	for i in range(0,5):
+		v[20+i] = 1 - ( 1 - v[20+i] ) * 0.7 ** ( 1 + v[30] )
+
 	if oppo_ability == "magicbounce":
 		if "reflectable" in move.entry["flags"]:
 			v[93:98] = v[20:25]
@@ -862,20 +1060,9 @@ def modified_move_vector(
 	if oppo_ability == "steadfast":
 		v[17] += v[55]
 
-
-
-
-
-
-	if ability == "speedboost":
-		v[10] += 1
-	if ability == "moody":
-		for i in range (0,5):
-			v[6+i] += 0.2
-
-
-
-
+	if item == "throatspray" and v[32]:
+		v[8] += 1
+		v[98] = 1
 
 		
 
@@ -884,46 +1071,28 @@ def modified_move_vector(
 			pdmg += 1/8
 
 
-	#contact
-	if v[31]:
-		if oppo_ability in ("roughskin","ironbarbs"):
-			pdmg += 1/8 * ( 1 + v[30] )
-		if oppo_item ==  "rockyhelmet":
-			pdmg += 1/6 * ( 1 + v[30] )
-
-		if oppo_ability == "flamebody":
-			v[93] += 1 - 0.7 ** ( 1 + v[30] )
-		if oppo_ability == "static":
-			v[95] += 1 - 0.7 ** ( 1 + v[30] )
-		if oppo_abiliy == "effectspore":
-			if item != "safetygoggles" and ability != "overcoat" and PokemonType.GRASS not in types:
-				v[93] += 1 - 0.9 ** ( 1 + v[30] )
-				v[95] += 1 - 0.9 ** ( 1 + v[30] )
-				v[96] += 1 - 0.9 ** ( 1 + v[30] )
-		if oppo_ability == "aftermath" and ability != "damp":
-			if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1]:
-				pdmg += 1/4
-		if ability == "poisontouch":
-			v[23] += 1 - 0.7 ** ( 1 + v[30] )
 
 
 
 
 
-	if oppo_ability == "synchronize":
-		v[93] += v[20]
-		v[95] += v[22]
-		v[96] += v[23]
+
+
 	
 #	if deal damage
 	if v[1] or v[2] or v[53]:
 		if item == "lifeorb" and ability != "sheerforce":
 			pdmg += 1/10
+		if item == "shellbell" and Effect.HEAL_BLOCK not in effects:
+			v[27] += 1/8
+		if item == "bigroot" and v[27] > 0:
+			v[27] *= 1.3
+
 		if ability == "stench" or item in ("kingsrock","razorfang"):
 			v[55] += 1 - 0.9 ** ( 1 + v[30] )
 		if ability == "serenegrace":
 			v[13:25] *= 2 							#test this
-			v[55] *= 2
+			v[55] *= 2		
 		if oppo_ability == "shielddust" or ability == "sheerforce":
 			v[13:25] *= 0
 			v[55] *= 0
@@ -935,11 +1104,60 @@ def modified_move_vector(
 			v[13] += 1 * ( 1 + v[30] )
 		if oppo_ability == "rattled" and movetype in (PokemonType.DARK,PokemonType.GHOST,PokemonType.BUG):
 			v[13] += 1 * ( 1 + v[30] )
+		if oppo_ability == "stamina":
+			v[14] += 1 * ( 1 + v[30] )
+		if oppo_ability == "watercompaction" and movetype == PokemonType.WATER:
+			v[14] += 2 * ( 1 + v[30] )
+		if oppo_ability == "steamengine" and movetype in (PokemonType.FIRE,PokemonType.WATER):
+			v[17] += 12
+		if oppo_ability == "cottondown":
+			v[10] -= 1 * ( 1 + v[30] )		
+		if oppo_ability == "sandspit":
+			v[85] = 1	
+		#contact
+		if v[31]:
+			if oppo_ability in ("roughskin","ironbarbs"):
+				pdmg += 1/8 * ( 1 + v[30] )
+			if oppo_item ==  "rockyhelmet":
+				pdmg += 1/6 * ( 1 + v[30] )
 
-	if v[1]:
-		if oppo_ability == "weakarmor":
-			v[14] -= ( 1 + v[30] )
-			v[17] += 2 * ( 1 + v[30] )
+			if oppo_ability == "flamebody":
+				v[93] = 1 - ( 1 - v[93] ) * 0.7 ** ( 1 + v[30] )
+			if oppo_ability == "static":
+				v[95] = 1 - ( 1 - v[93] ) * 0.7 ** ( 1 + v[30] )
+			if oppo_abiliy == "effectspore":
+				if item != "safetygoggles" and ability != "overcoat" and PokemonType.GRASS not in types:
+					v[93] = 1 - ( 1 - v[93] ) * 0.9 ** ( 1 + v[30] )
+					v[95] = 1 - ( 1 - v[95] ) * 0.9 ** ( 1 + v[30] )
+					v[96] = 1 - ( 1 - v[95] ) * 0.9 ** ( 1 + v[30] )
+			if oppo_ability in ("gooey","tanglinghair"):
+				v[10] -= 1 * ( 1 + v[30] )		
+			if oppo_ability == "aftermath" and ability != "damp":
+				if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1]:
+					pdmg += 1/4
+			if ability == "poisontouch":
+				v[23] += 1 - 0.7 ** ( 1 + v[30] )
+			if oppo_ability in ("mummy","wanderingspirit"):
+				v[82] = 1
+			if oppo_ability == "perishbody":
+				v[50] = 2
+
+		if move.entry["category"] == "Physical":
+			if oppo_ability == "weakarmor":
+				v[14] -= ( 1 + v[30] )
+				v[17] += 2 * ( 1 + v[30] )
+			if oppo_item == "keeberry":
+				v[14] += 1
+				v[99] = 1
+				if oppo_ability == "cheekpouch":
+					v[53] -= 1/3
+		if move.entry["category"] == "Special":
+			if oppo_item == "marangaberry":
+				v[16] += 1
+				v[99] = 1
+				if oppo_ability == "cheekpouch":
+					v[53] -= 1/3
+
 
 
 	if move._id == "strengthsap":
@@ -957,18 +1175,30 @@ def modified_move_vector(
 	if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1]:
 		if ability in ("moxie","chillingneigh","asoneglastrier"):
 			v[6] += 1
-		if ability == ("grimneigh","asonespectrier"):
+		if ability in ("grimneigh","asonespectrier"):
 			v[7] += 1
+		if ability == "beastboost":									#test this
+			tempstats = np.zeros(5)
+			tempstats = pokemon_vectorize(mon,{},{},False,False)[17:22]
+			i = tempstats.index(max(tempstats))
+			v[6+i] += 1 
 		if move._id == "fellstinger":
 			v[6] += 3
+		if oppo_ability == "innardsout":
+			pdmg += oppo._stats[0] / mon._stats[1]
 
 
 	if v[1]+v[2]+v[53]-pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[8] > oppo._stats[0] / oppo._stats[1]:
 		if ability == "soulheart":
 			v[7] += 1
 
+	
+	if oppo_ability == "synchronize":
+		v[93] += v[20]
+		v[95] += v[22]
+		v[96] += v[23]
 
-	#weather,field
+
 
 
 
@@ -983,6 +1213,30 @@ def modified_move_vector(
 			v[39] = 1
 			v[38] = 0
 			v[99] = 1
+
+	if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1] - 1/4 and v[1]+v[2]+v[53] < 1:
+		if oppo_item in giantberry:
+			v[53] -= 1/3
+			v[99] = 1
+			if oppo_ability == "cheekpouch":
+				v[53] -= 1/3
+	else:
+		if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1] - 1/2:
+			if oppo_ability in ("wimpout","emergencyexit"):
+				v[39] = 1
+				v[38] = 0
+			if oppo_ability == "berserk":
+				v[15] += 1
+			if oppo_ability == "gluttony" and oppo_item in giantberry:
+				v[53] -= 1/3
+				v[99] = 1
+			if oppo_item == "sitrusberry":
+				v[53] -= 1/4
+				v[99] = 1
+				if oppo_ability == "cheekpouch":
+					v[53] -= 1/3
+
+
 	if item == "ejectpack":
 		for i in range(0,7):
 			if v[6+i]<0:
@@ -994,12 +1248,16 @@ def modified_move_vector(
 				v[39] = 1
 				v[99] = 1
 	
-	#Gluttony, berry
+	#Gluttony, Cheek Pouch, berry
 
+	# happens at end of turn
+	if ability == "speedboost":
+		v[10] += 1
+	if ability == "moody":
+		for i in range (0,5):
+			v[6+i] += 0.2
 
-
-
-#side-effect-inmune
+	#side-effect-inmune
 	if Weather.SUNNYDAY in oppo_weather:
 		if oppo_ability == "leafguard":
 			v[20:25] *= 0
@@ -1073,6 +1331,16 @@ def modified_move_vector(
 					v[6] += 2	
 				if ability == "competitive":
 					v[8] += 2
+	if oppo_item == "whiteherb":
+		for i in range(0,7):
+			if v[13+i] < 0:
+				v[13+i] = 0
+				v[99] = 1
+	if item == "whiteherb":
+		for i in range(0,7):
+			if v[6+i] < 0:
+				v[6+i] = 0
+				v[98] = 1
 	if oppo_ability == "defiant":
 		for i in range(0,7):
 			if v[13+i] < 0:
@@ -1094,6 +1362,8 @@ def modified_move_vector(
 				pdmg += oppo._stats[1] / mon._stats[1] / 8
 			else:
 				heal +=  oppo._stats[1] / mon._stats[1] / 8
+				if item == "bigroot" and v[27] > 0:
+					heal +=  0.3 * oppo._stats[1] / mon._stats[1] / 8
 
 	if Effect.HEAL_BLOCK in effects:
 		heal = 0		
@@ -1110,25 +1380,56 @@ def modified_move_vector(
 		v[28] = 0
 		if v[27] < 0:
 			v[27] = 0
-	v[26] = heal - pdmg - selfattact
-		
+	v[26] = heal - pdmg - selfattact + v[28] * ( 1 - v[4])
+	v[27] *= (v[1]+v[2]+v[53]) * oppo._stats[1] / mon._stats[1]
 
 	if move._id == "painsplit": 
-		pass
+		v[53] = (oppo._stats[0] - mon._stats[0]) / oppo._stats[1] / 2
+		v[27] = (oppo._stats[0] - mon._stats[0]) / mon._stats[1] / 2
 
 	if oppo_ability == "suctioncups":
 		v[39] = 0
-	if PokemonType.GHOST in oppo_types or oppo_item == "shedshell":
+	if PokemonType.GHOST in oppo_types or oppo_item == "shedshell" or pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[15]:
 		v[42] = 0
+	if Effect.INGRAIN in effects and move._id == "ingrain":
+		v[43] = 0
+	if Effect.AQUA_RING in effects and move._id == "aquaring":
+		v[43] = 0		
 	if oppo_ability == "innerfocus":
 		v[55] = 0
 	if oppo_ability == "owntempo" or Effect.CONFUSION in oppo_effects:
 		v[56] = 0
+	if Effect.CURSE in oppo_effects:
+		v[57] = 0
+	if Effect.DISABLE in oppo_effects and move._id == "disable":
+		v[59] = 0
+	if Effect.TORMENT in oppo_effects and move._id == "torment":
+		v[59] = 0
+	if Effect.IMPRISON in oppo_effects and move._id == "imprison":
+		v[59] = 0
+	if Effect.ENCORE in oppo_effects:
+		v[60] = 0
+	if Effect.FOCUS_ENERGY in effects:
+		v[61] = 0
+	if Effect.LEECH_SEED in oppo_effects:
+		v[62] = 0
+	if EFFECT.MAGNET_RISE in effects:
+		v[63] = 0
+	if EFFECT.SUBSTITUTE in effects:
+		v[67] = 0		
 	if oppo_ability == "oblivious" or Effect.TAUNT in oppo_effects:
 		v[68] = 0
+	if oppo_ability == "aromaveil":
+		v[59] = 0
+		v[60] = 0
+		v[68] = 0
+	if oppo_item == "mentalherb":
+		v[59] = 0
+		v[60] = 0
+		v[68] = 0
+		v[99] = 1
 	if ability == "shedskin":
 		v[80] += 1/3
-
 
 	if oppo_ability in ("waterveil","waterbubble"):
 		v[20] = 0
@@ -1142,7 +1443,7 @@ def modified_move_vector(
 		v[22] = 0
 	if ability == "limber" or PokemonType.ELECTRIC in types:
 		v[95] = 0
-	if oppo_ability in ("immunity","pastelveil"):
+	if oppo_ability in ("immunity","pastelveil"): 				#"pastelveil" not same in double
 		v[23] = 0
 	if PokemonType.POISON in oppo_types or PokemonType.STEEL in oppo_types:
 		if ability != "corrosion":
@@ -1151,16 +1452,15 @@ def modified_move_vector(
 		v[96] = 0
 	if PokemonType.POISON in types or PokemonType.STEEL in types:
 		v[96] = 0
-	if oppo_ability in ("insomnia","vitalspirit"):
+	if oppo_ability in ("insomnia","vitalspirit","sweetveil"):
 		v[24] = 0
 		v[69] = 0
-	if ability in ("insomnia","vitalspirit"):
+	if ability in ("insomnia","vitalspirit","sweetveil"):
 		v[97] = 0	
 	if Effect.YAWN in oppo_effects:
 		v[24] = 1
-	if move._id == "yawn":
-		if Effect.YAWN in oppo_effects:
-			v[69] = 0
+	if Effect.YAWN in oppo_effects:
+		v[69] = 0
 	if Effect.YAWN in effects:
 		v[97] = 1
 	if oppo._mon._status:
@@ -1179,7 +1479,8 @@ def modified_move_vector(
 		v[97] = 1
 
 	if "cloudnine" in (ability,oppo_ability):
-		v[83:87] /= 10		
+		v[83:87] /= 10	
+
 
 
 	return v
@@ -1326,14 +1627,14 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 					dpt += 1
 			if ability == "icebody":
 				hpt += 1
-	if Field.GRASSY_TERRAIN in field:
-		if _is_grounded(mon,field):
-			hpt += 1
+
 
 	effects = mon._mon._effects 
 	if mon._mon.active:
 		if Effect.AQUA_RING in effects:
 			hpt += 1
+			if item == "bigroot" :
+				hpt += 0.3
 		if Effect.BIND in effects:
 			dpt += 2
 			v[15] = 5 - effects[Effect.BIND]
@@ -1357,6 +1658,8 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			v[15] = 5 - effects[Effect.INFESTATION]
 		if Effect.INGRAIN in effects:
 			hpt += 1
+			if item == "bigroot" :
+				hpt += 0.3
 		if Effect.LEECH_SEED in effects:
 			dpt += 2
 		if Effect.MAGMA_STORM in effects:
@@ -1426,7 +1729,16 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			v[21] *= 2
 		if PokemonType.ROCK in types:
 			v[20] *= 1.5
-
+	if Weather.HAIL in weather:
+		if ability == "slushrush":
+			v[21] *= 2
+	if Field.GRASSY_TERRAIN in field:
+		hpt += 1
+		if ability == "grasspelt":
+			v[18] *= 1.5
+	if Field.ELECTRIC_TERRAIN in field:
+		if ability == "surgesurfer":
+			v[21] *= 2
 	if ability in ("hugepower","purepower"):
 		v[17] *= 2
 	if ability == "hustle":
@@ -1440,7 +1752,7 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		v[17] *= 0.5
 		v[19] *= 0.5
 	if item == "ironball":
-		v[25] *= 0.5
+		v[21] *= 0.5
 
 	if item in ("laggingtail","fullincense") or ability == "stall":
 		if Field.TRICK_ROOM in field:
@@ -1453,9 +1765,12 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		v[8] -= dpt / 16
 
 
+	v[24] = mon._mon._protect_counter
+	
+	if Effect.PERISH2 in effects:					#test whether PERISH2 or PERISH3
+		v[8] -= 1
 
-
-	return(v[:24])
+	return(v[:25])
 
 
 
@@ -1488,6 +1803,8 @@ def move_vectorize(move:Move):
 	if move.entry["category"] == "Special":
 		v[2] = move.base_power	
 
+	if move._id == "fling":
+		v[1] = 130
 
 	v[3] = np.amax(v[1:2]) * 0.04 #std error
 	if isinstance(move.entry.get("multihit",{}),list):
@@ -1609,12 +1926,15 @@ def move_vectorize(move:Move):
 	if _status == "tox":
 		v[23] = 2 * _chance
 
-	if move._id == "triattack":
+	if move._id == "triattack":								#these things are not correct but nvm
 		v[20] = 1/15
 		v[21] = 1/15
 		v[22] = 1/15
 	if move._id == "banefulbunker":
 		v[23] = 0.3
+	if move_id == "burningjealousy":
+		v[20] = 0.3
+
 
 	if move._id in ("boltbeak","fishiousrend"):				
 		v[25] = 1
@@ -1641,8 +1961,6 @@ def move_vectorize(move:Move):
 	#damage%
 	if "drain" in move.entry:
 		v[27] = move.entry["drain"][0]/move.entry["drain"][1]
-	if move._id == "painsplit": 
-		v[27] = 1
 	if "recoil" in move.entry:
 		v[27] = -move.entry["recoil"][0]/move.entry["recoil"][1]
 	# highjumpkick
@@ -1696,7 +2014,8 @@ def move_vectorize(move:Move):
 		v[49] = 1
 	if "isFutureMove" in move.entry:
 		v[50] = 1
-
+	if move._id == "perishsong":
+		v[50] = 2
 	if move._id == "counter":
 		v[51] = 2
 	if move._id == "mirrorcoat":
@@ -1932,7 +2251,7 @@ def boosts_to_multi(n):
 		k = 1 / (1 - n / 2)
 	return k
 
-def grassknowpower(w):
+def grassknotpower(w):
 	if w < 0:
 		return 0
 	if w < 10:
@@ -2003,4 +2322,13 @@ def electroballpower(ms,os):
 	illusion
 	substitute hp%
 	mummy
+	destinybond
+	Burning Jealousy
+	Stakeout
+	when switch, check if will get hit
+	Screen Cleaner
+	Quick Draw, Quick Claw
+	Unseen fist
+	mirrorcoat,etc
+
 '''
