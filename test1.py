@@ -19,6 +19,7 @@ from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.status import Status
 from my_player import MyPlayer
 from my_random_player import RandomPlayer
+from amateur_player import AmateurPlayer
 from poke_env.player.battle_order import (
     BattleOrder,
     DefaultBattleOrder,
@@ -27,13 +28,13 @@ from poke_env.player.battle_order import (
 
 
 import vector_converter as vc
+from vector_converter import Switch
 from pokemonset import PokemonSet
 
 
 
 def my_end_item(self, item):
     self._item = "lost"                         #change 1:add lost as item 
-    print(self._item)
     if item == "powerherb":
         self._preparing_move = False
         self._preparing_target = False
@@ -95,45 +96,41 @@ Pokemon._switch_out = my_switch_out
 Pokemon._update_from_request= my_update_from_request
 
 
-player_2 = RandomPlayer(
+player_2 = AmateurPlayer(
     battle_format="gen8randombattle", max_concurrent_battles=1
 )
 
 
-class MaxDamagePlayer(MyPlayer):
+class CheatingPlayer(MyPlayer):
 
 
     def choose_move(self, battle):
-        battle2=list(player_2._battles.values())[-1]
+        
 
         #print all information
-        
+        battle2=list(player_2._battles.values())[-1]
+
+
         print("turn:",battle._turn)       
         print("player:")
         self.show_down(battle)
         print("opponent:")
         player_2.show_down(battle2)
-        print("field:",battle._fields,battle._weather)
+        print("weather & field:",battle._weather,battle._fields)
         print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
         
         #self.show_opponent(battle)
-
-        if battle.available_moves and np.random.uniform() < 0.8:
-            if np.random.uniform() < 0.75:
-                best_move = max(battle.available_moves, key=lambda move: move.base_power * move.type.damage_multiplier(*battle.opponent_active_pokemon.types) )
+        if battle2.active_pokemon is not None:
+            if battle.available_moves:
+                best_move = movechooser(battle,battle2)
             else:
-                best_move = battle.available_moves[int(np.random.uniform() * len(battle.available_moves))]
-        #    print("move",best_move._id)
+                if battle.available_switches:
+                    best_move = switchchooser(battle,battle2)
             return self.create_order(best_move)
 
         else:
-            if battle.available_switches:
-                switch = battle.available_switches[int(np.random.uniform() * len(battle.available_switches))]
-            #    print("switch",switch._species)
-                return self.create_order(switch)
-            else:
-                return self.choose_default_move(battle)
-
+           return self.choose_default_move(battle)
+        print("\n\n")
 
     def teampreview(self, battle):
         mon_performance = {}
@@ -172,8 +169,109 @@ def teampreview_performance(mon_a, mon_b):
     # Our performance metric is the different between the two
     return a_on_b - b_on_a
 
+def movechooser(battle,battle2):
+    a = len(battle.available_moves)
+    b = len(battle.available_switches)
+    available = battle.available_moves + battle.available_switches
+    choise = []
+    choise_weight = []
+    weight = [0 for i in range(0,a+b)]
+    for i in range(0,a):
+        weight[i] = simply_modified_weight(battle.available_moves[i],battle.active_pokemon,battle2.active_pokemon,battle,battle2)
+        print(battle.available_moves[i]._id,weight[i])
+
+    oppo_most_threating_move = max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.active_pokemon,battle2,battle))
+    threating_rate = simply_modified_weight(Move(oppo_most_threating_move),battle2.active_pokemon,battle.active_pokemon,battle2,battle)
+    print("oppo_most_threating_move",oppo_most_threating_move,threating_rate)
+    for i in range(0,b):
+        weight[a+i] = threating_rate
+        oppo_most_threating_move_2 = max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.available_switches[i],battle2,battle))
+        weight[a+i] *= simply_modified_weight(Switch(),battle.available_switches[i],battle2.active_pokemon,battle,battle2)
+        weight[a+i] /= simply_modified_weight(Move(oppo_most_threating_move),battle2.active_pokemon,battle.available_switches[i],battle2,battle)
+        weight[a+i] /= simply_modified_weight(Move(oppo_most_threating_move_2),battle2.active_pokemon,battle.available_switches[i],battle2,battle) ** 0.5
+        for _move in battle.available_switches[i]._moves:
+            most_threating_move = max(battle.available_switches[i]._moves, key=lambda move: simply_modified_weight(Move(move),battle.available_switches[i],battle2.active_pokemon,battle,battle2))
+        weight[a+i] *= simply_modified_weight(Move(most_threating_move),battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
+        print(battle.available_switches[i]._species,weight[a+i])
+    for j in range(0,min(a+b,4)):
+        k = list(weight).index(max(weight))
+        choise_weight += [weight.pop(k)]
+        choise += [available.pop(k)]
+    _move = np.random.choice(choise, 1 , p = choise_weight/sum(choise_weight))[0]
+    print("move:",_move)
+    return _move
+
+def switchchooser(battle,battle2):
+    print("switchchooser calculating...")
+    a = len(battle.available_switches)
+    threating_rate=np.ones(a)
+    for i in range(0,a):
+        oppo_most_threating_move = max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.available_switches[i],battle2,battle))
+        threating_rate[i] /= simply_modified_weight(Move(oppo_most_threating_move),battle2.active_pokemon,battle.available_switches[i],battle2,battle)
+        threating_rate[i] *= simply_modified_weight(Switch(),battle.available_switches[i],battle2.active_pokemon,battle,battle2)
+        most_threating_move = max(battle.available_switches[i]._moves, key=lambda move: simply_modified_weight(Move(move),battle.available_switches[i],battle2.active_pokemon,battle,battle2))
+        threating_rate[i] *= simply_modified_weight(Move(most_threating_move),battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
+        print(battle.available_switches[i]._species,threating_rate[i])
+    j = list(threating_rate).index(max(threating_rate))
+    return battle.available_switches[j]
 
 
+
+def simply_modified_weight(move,mon,oppo,battle,battle2):
+    v=vc.modified_move_vector(move,PokemonSet(mon),PokemonSet(oppo),battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
+    w=np.zeros(100)
+    w[1] = 1
+    w[2] = 1
+    w[5] = v[1]+v[2]
+    w[6:13] = np.ones(7)*0.2
+    w[13:20] = np.ones(7)*-0.1
+    w[20:25] =  np.ones(5)*0.2
+    w[25] = np.arctan(v[0])
+    w[26] = 0.5
+    w[27] = 0.5*(v[1]+v[2])
+    w[28] = (1-v[4])*0.5
+    w[35] = -0.5*(v[1]+v[2])
+    w[36] = 0.1*(v[1]+v[2])
+    w[37] = -0.5*(v[1]+v[2])
+    w[41] = -0.05
+    w[42] = 0.05
+    w[43] = 0.05
+    w[44] = 0.1
+    w[45] = 0.05
+    w[46] = 0.05
+    w[50] = 0.1
+    w[51] = 0.1
+    w[52] = 0.1
+    w[53] = 1
+    w[54] = 0.3
+    w[55] = 0.3
+    w[56] = 0.1
+    w[57] = 0.7
+    w[58] = 0.3
+    w[59] = 0.2
+    w[60] = 0.2
+    w[61] = 0.2
+    w[62] = 0.5
+    w[63] = -0.5
+    w[67] = 0.5
+    w[68] = 0.3
+    w[69] = 0.3
+    w[70:78] = np.ones(8)*0.4
+    w[78] = 0.2
+    w[81] = 0.3
+    w[82] = 0.2
+    w[83:91] = np.ones(8)*0.5
+    w[93:98] = np.ones(5)*0.2
+    w[98] = -0.1
+    w[99] = 0.1
+    t = w.dot(v) * v[4] * (np.arctan(20*v[0])+6)
+    if t > 10:
+        print("error!")
+        vc.vectordebug(v)
+        print(move,mon._species,oppo._species)
+    weight = np.exp(min(t,4))
+
+    return weight
 
 
 
@@ -181,15 +279,15 @@ async def main():
     fd=open("test.txt","w")
     sys.stdout=fd
 
-    max_damage_player_1 = MaxDamagePlayer(
+    max_damage_player_1 = CheatingPlayer(
         battle_format="gen8randombattle", max_concurrent_battles=1
     )
 
-    n_battles = 1
+    n_battles = 100
     await max_damage_player_1.battle_against(player_2, n_battles)
 
     print(
-        "Max damage player won %d / %d battles"
+        "CheatingPlayer won %d / %d battles"
         % (max_damage_player_1.n_won_battles, n_battles)
     )
     fd.close()

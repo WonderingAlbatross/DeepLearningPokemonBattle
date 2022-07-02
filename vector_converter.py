@@ -1,6 +1,8 @@
 import numpy as np
+import copy
 from typing import Optional
 from typing import Dict
+
 
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
@@ -87,6 +89,16 @@ brokenability = ("battlearmor","clearbody","damp","flashfire","hypercutter","inn
 # veils work differently in double!
 crushmove = ("stomp","bodyslam","dragonrush","heatcrash","heavyslam","steamroller","flyingpress","maliciousmoonsault")
 
+class Switch:
+	def __init__(self):
+		self._id = "switch"
+		self.priority = 7
+		self.type = None
+		self.entry = {"flags":{},"accuracy": 100,"basePower": 0,"category":None,"pp": 999,"priority": 7,"target": "switch"}
+
+
+
+
 def modified_move_vector(
 		move,
 		mon:PokemonSet,
@@ -107,26 +119,26 @@ def modified_move_vector(
 
 
 	#p1. modifies ability
-	counts_ability = _counts_ability
-	counts_oppo_ability = _counts_oppo_ability
-	if "neutralizinggas" in (ability,oppo_ability):
-		if ability not in ("comatose","asoneglastrier","asonespectrier"):
-			counts_ability = False
-		if oppo_ability not in ("comatose","asoneglastrier","asonespectrier"):
-			counts_oppo_ability = False	
-	if counts_ability is True:
+
+
+	if _counts_ability is True and mon._mon._ability:
 		ability = mon._mon._ability		
 	else:
-		if counts_ability:							#Test this!
-			ability = counts_ability
+		if _counts_ability is str:							#Test this!
+			ability = _counts_ability
 		else:
 			ability = ""
-	if counts_oppo_ability is True:
+	if _counts_oppo_ability is True and oppo._mon._ability:
 		oppo_ability = oppo._mon._ability
 	else:
-		if counts_oppo_ability:
-			oppo_ability = counts_oppo_ability
+		if _counts_oppo_ability is str:
+			oppo_ability = _counts_oppo_ability
 		else:
+			oppo_ability = ""
+	if "neutralizinggas" in (ability,oppo_ability):
+		if ability not in ("comatose","asoneglastrier","asonespectrier"):
+			ability = ""
+		if oppo_ability not in ("comatose","asoneglastrier","asonespectrier"):
 			oppo_ability = ""
 	if ability == "trace":
 		ability = oppo_ability
@@ -137,54 +149,61 @@ def modified_move_vector(
 			oppo_ability = ""
 
 	#p2. modifies item
-	counts_item = _counts_item
-	counts_oppo_item = _counts_oppo_item
-
-	if ability == "klutz" or Effect.EMBARGO in mon._mon._effects:
-		counts_item = False
-	if oppo_ability == "klutz" or Effect.EMBARGO in oppo._mon._effects:
-		counts_oppo_item = False
-	if ability in ("unnerve","asoneglastrier","asonespectrier") and oppo._mon._item.endswith("berry"):
-		counts_oppo_item = False
-	if oppo_ability in ("unnerve","asoneglastrier","asonespectrier") and mon._mon._item.endswith("berry"):
-		counts_item = False
-
-
-	if Field.WONDER_ROOM in field: 
-		counts_item = False
-		counts_oppo_item = False
-
-	if counts_item is True:
+	if _counts_item is True and mon._mon._item:
 		item = mon._mon._item		
 	else:
-		if counts_item:
-			item = counts_item
+		if _counts_item is str:
+			item = _counts_item
 		else:
 			item = ""
-	if counts_oppo_item is True:
+	if _counts_oppo_item is True and oppo._mon._item:
 		oppo_item = oppo._mon._item
 	else:
-		if counts_oppo_item:
-			oppo_item = counts_oppo_item
+		if _counts_oppo_item is str:
+			oppo_item = _counts_oppo_item
 		else:
 			oppo_item = ""
 
 
+	if ability == "klutz" or Effect.EMBARGO in mon._mon._effects:
+		item = ""
+	if oppo_ability == "klutz" or Effect.EMBARGO in oppo._mon._effects:
+		oppo_item = ""
+	if ability in ("unnerve","asoneglastrier","asonespectrier") and oppo_item.endswith("berry"):
+		oppo_item = ""
+	if oppo_ability in ("unnerve","asoneglastrier","asonespectrier") and item.endswith("berry"):
+		item = ""
+
+
+	if Field.WONDER_ROOM in _field: 
+		item = ""
+		oppo_item = ""
+		
+
+
+
+
 
 	#p3.modifies weathers.etc, move types, pokemontype
-	weather = _weather
-	oppo_weather = _weather
-	field = _field
-	oppo_field = _field
-	side = _side
-	oppo_side = _oppo_side
-	movetype = move.type
-	types = mon._mon.types
-	oppo_types = oppo._mon.types
-	effects = mon._mon._effects 
-	oppo_effects = oppo._mon._effects 
+	weather = copy.deepcopy(_weather)
+	oppo_weather = copy.deepcopy(_weather)
+	field = copy.deepcopy(_field)
+	oppo_field = copy.deepcopy(_field)
+	side = copy.deepcopy(_side)
+	oppo_side = copy.deepcopy(_oppo_side)
+	movetype = copy.deepcopy(move.type)
+	types = [mon._mon.type_1]
+	if mon._mon.type_2:
+		types = types + [mon._mon.type_2]
+	oppo_types = [oppo._mon.type_1]
+	if oppo._mon.type_2:
+		oppo_types = oppo_types + [oppo._mon.type_2]
+	effects = copy.deepcopy(mon._mon._effects)
+	oppo_effects = copy.deepcopy(oppo._mon._effects)
 	weight = mon._mon._weightkg
 	oppo_weight = oppo._mon._weightkg
+
+
 
 
 	pdmg = 0
@@ -202,26 +221,26 @@ def modified_move_vector(
 		weather = {}
 		oppo_weather = {}	
 
-	if _is_grounded(mon,field) == False:
-		for f in field:
-			if f.is_terrain():
-				field.remove(f)	
-	if _is_grounded(oppo,field) == False:
-		for f in oppo_field:
-			if f.is_terrain():
-				oppo_field.remove(f)								#test it
+	if _is_grounded(mon,_field) == False:
+		for f in _field:
+			if f.name.endswith("_TERRAIN"):
+				field.pop(f)
+	if _is_grounded(oppo,_field) == False:
+		for f in _field:
+			if f.name.endswith("_TERRAIN"):
+				oppo_field.pop(f)								
 
 	if ability == "infiltrator":
 		if SideCondition.REFLECT in oppo_side:
-			oppo_side.remove(SideCondition.REFLECT)
+			oppo_side.pop(SideCondition.REFLECT)
 		if SideCondition.LIGHT_SCREEN in oppo_side:
-			oppo_side.remove(SideCondition.LIGHT_SCREEN)
+			oppo_side.pop(SideCondition.LIGHT_SCREEN)
 		if SideCondition.AURORA_VEIL in oppo_side:
-			oppo_side.remove(SideCondition.AURORA_VEIL)
+			oppo_side.pop(SideCondition.AURORA_VEIL)
 		if SideCondition.MIST in oppo_side:
-			oppo_side.remove(SideCondition.MIST)
+			oppo_side.pop(SideCondition.MIST)
 		if SideCondition.SAFEGUARD in oppo_side:
-			oppo_side.remove(SideCondition.SAFEGUARD)				
+			oppo_side.pop(SideCondition.SAFEGUARD)				
 
 
 
@@ -244,14 +263,14 @@ def modified_move_vector(
 
 	#p4. modifies stats
 	m_stats = np.zeros(5)
-	m_stats = pokemon_vectorize(mon,weather,field,counts_ability,counts_item)[17:22]
+	m_stats = pokemon_vectorize(mon,weather,field,ability,item)[17:22]
 	o_stats = np.zeros(5)
-	o_stats = pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[17:22]
+	o_stats = pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[17:22]
 	boosts = list(mon._mon._boosts.values())
 	acc = boosts.pop(0)
 	eva = boosts.pop(2)
-	boost.append(acc)
-	boost.append(eva)
+	boosts.append(acc)
+	boosts.append(eva)
 	oppo_boosts = list(oppo._mon._boosts.values())
 	o_acc = oppo_boosts.pop(0)
 	o_eva = oppo_boosts.pop(2)
@@ -259,7 +278,7 @@ def modified_move_vector(
 	oppo_boosts.append(o_eva)
 	if _crit:
 		for i in (0,2):
-			if boost[i] < 0:
+			if boosts[i] < 0:
 				m_stats[i] /= boosts_to_multi(boosts[i])
 	if _crit or move._id in ("psychick","psystrike","secretsword"):
 		for i in (1,3):
@@ -272,6 +291,13 @@ def modified_move_vector(
 		for i in (0,2):
 			m_stats[i] /= boosts_to_multi(boosts[i])
 
+	if move._id == "spectralthief":
+		stealboosts = [0,0,0,0,0]
+		for i in range(0,5):
+			if oppo_boosts[i] > 0:
+				stealboosts[i] = oppo_boosts[i]
+				oppo_boosts[i] = 0
+				boosts[i] += stealboosts[i]
 
 
 
@@ -285,7 +311,7 @@ def modified_move_vector(
 		speed_ratio *= -1 
 
 	#p5 modifies if this is a switch
-	if move == "switch":
+	if move._id == "switch":
 		v[0] = 7 + speed_ratio
 		if ability == "intimidate":
 			if oppo_ability not in ("scrappy","owntempo","innerfocus","oblivious",):
@@ -294,7 +320,7 @@ def modified_move_vector(
 					v[17] = 2
 		if ability == "shadowtag" and oppo_ability != "shadowtag":	
 			v[42] = 2
-		if ability == "magnetpull" and PokemonType.STELL in oppo_types:
+		if ability == "magnetpull" and PokemonType.STEEL in oppo_types:
 			v[42] = 2
 		if ability == "arenatrap" and _is_grounded(oppo,field):
 			v[42] = 2
@@ -350,7 +376,7 @@ def modified_move_vector(
 							if ability == "competitive":
 								v[8] += 2							
 	
-	if move != "switch":
+	if move._id != "switch":
 		v = move_vectorize(move)
 		if v[26] > 0 :
 			heal += v[26]
@@ -407,7 +433,7 @@ def modified_move_vector(
 		v[1:3] *= 1.2
 
 	if ability in ("protean","libero"):
-		types = ( movetype )								#test this
+		types = list([movetype])								#test this
 
 	if ability == "prankster" and move.entry["category"] == "Status":
 		v[0] += 1
@@ -423,7 +449,7 @@ def modified_move_vector(
 
 	#p7. modiefies if has no effect and accurancy
 
-		
+	
 	if item == "protectivepads" or ability == "longreach":
 		v[31] = 0
 	if move._id in ("solarbeam","solarblade") and Weather.SUNNYDAY in weather:
@@ -438,7 +464,7 @@ def modified_move_vector(
 	if ability == "unseenfist" and v[31]:
 		v[47] = 1
 	
-	if "defrost" in move.entry["flags"] and mon._mon._status.name == "FRZ":
+	if "defrost" in move.entry["flags"] and mon._mon._status and mon._mon._status.name == "FRZ":
 		v[80] = 1	
 
 	if "damp" in (ability,oppo_ability):
@@ -447,7 +473,7 @@ def modified_move_vector(
 	if Effect.THROAT_CHOP in effects and v[32]:
 		v[1:] *= 0
 
-	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
+	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","randomNormal","any"):
 		if oppo_ability == "soundproof" and v[32]:
 			v[1:] *= 0
 		if (oppo_ability == "overcoat" or oppo_item == "safetygoggles" or PokemonType.GRASS in oppo_types) and v[33]:
@@ -475,7 +501,7 @@ def modified_move_vector(
 			v[1:] *= 0
 		if Field.ELECTRIC_TERRAIN in field or Field.MISTY_TERRAIN in field:
 			v[1:] *= 0
-	if move._id in ("sleeptalk","snore") and mon._mon._status.name != "SLP" and ability != "comatose":
+	if move._id in ("sleeptalk","snore") and mon._mon._status and mon._mon._status.name != "SLP" and ability != "comatose":
 		v[1:] *= 0
 	if move._id in ("dreameater","nightmare") and oppo._mon._status.name != "SLP" and oppo_ability != "comatose":
 		v[1:] *= 0
@@ -485,7 +511,15 @@ def modified_move_vector(
 				if Field.MISTY_TERRAIN not in _field:
 					if Field.PSYCHIC_TERRAIN not in _field:
 						v[1:] *= 0.01
-
+	if move._id == "auroraveil":
+		if Weather.HAIL not in weather:
+			v[1:] *= 0
+	if move._id == "futuresight":
+		if Effect.FUTURE_SIGHT in oppo_effects:
+			v[1:] *= 0
+	if move._id == "noretreat":
+		if Effect.NO_RETREAT in effects:
+			v[1:] *= 0
 
 	if oppo_ability == "wonderguard":
 		if v[1] or v[2] or v[53]:
@@ -497,7 +531,7 @@ def modified_move_vector(
 
 
 
-
+	v[44:47] *= 0.3 ** mon._mon._protect_counter
 
 
 
@@ -508,6 +542,7 @@ def modified_move_vector(
 
 
 	
+
 
 
 
@@ -586,11 +621,11 @@ def modified_move_vector(
 		v[2] = 20+b*20
 
 	if move._id == "hex":
-		if mon._mon._status.name:
+		if mon._mon._status:
 			v[2] *= 2
 
 	if move._id == "facade":
-		if mon._mon._status.name in ("BRN","PAR","TOX","PSN"):
+		if mon._mon._status and mon._mon._status.name in ("BRN","PAR","TOX","PSN"):
 			v[1] *= 2
 
 	if move._id == "brine":
@@ -616,7 +651,7 @@ def modified_move_vector(
 	if move.entry.get("volatileStatus","") == "partiallytrapped":
 		v[53] = oppo._stats[1] / 8
 
-	if mon._mon._status.name == "BRN" and ability != "guts" and move._id != "facade":
+	if mon._mon._status and mon._mon._status.name == "BRN" and ability != "guts" and move._id != "facade":
 		v[1] /= 2
 
 
@@ -638,7 +673,7 @@ def modified_move_vector(
 	v[53] /= oppo._stats[1] 														#turn to %
 	
 
-	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
+	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","randomNormal","any"):
 		if v[4] == 10:
 			v[4] = 1
 		else:
@@ -680,10 +715,12 @@ def modified_move_vector(
 					v[4] /= 2
 				if oppo_item in ("brightpowder","laxincense"):
 					v[4] *= 0.9
-				v[4] = min(v[4],1)
-	if item == "blunderpolicy":
-		v[10] += 2 * (1 - v[4])
-		v[98] = 1
+				if item == "blunderpolicy":
+					v[10] += 2 * (1 - v[4])
+					v[98] = 1
+	v[4] = min(v[4],1)
+
+
 	
 	if v[1] or v[2]:
 		if oppo_ability in ("battlearmor","shellarmor") or SideCondition.LUCKY_CHANT in oppo_side:
@@ -712,15 +749,17 @@ def modified_move_vector(
 						v[5] = 1/2
 					else:
 						v[5] = 1
+	if _crit:
+		v[5] = 0
 
 
 
 
-	if mon._mon._status.name == "FRZ" and v[34] == 0:
+	if mon._mon._status and mon._mon._status.name == "FRZ" and "defrost" not in move.entry["flags"]:
 		v[4] *= 0.25
-	if mon._mon._status.name == "PAR":
+	if mon._mon._status and mon._mon._status.name == "PAR":
 		v[4] *= 0.75
-	if (mon._mon._status.name == "SLP" or ability == "comatose") and  move._id not in ("sleeptalk","snore"):
+	if (mon._mon._status and mon._mon._status.name == "SLP" or ability == "comatose") and  move._id not in ("sleeptalk","snore"):
 		v[4] *= 0
 
 	if Effect.CONFUSION in effects:
@@ -729,7 +768,7 @@ def modified_move_vector(
 	if Effect.ATTRACT in effects:
 		v[4] *= 0.5
 
-	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
+	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","randomNormal","any"):
 
 		if "ohko" in move.entry:
 			v[1] = 10
@@ -739,16 +778,23 @@ def modified_move_vector(
 			else:
 				if movetype.damage_multiplier(*oppo_types) == 0:
 					v[1] = 0
-		else:			
+		else:	
+			damage_multiplier = 1		
 			if PokemonType.FLYING in oppo_types and (move._id == "thousandarrows" or oppo_item == "ironball"):
-				damage_multiplier = 1
+				damage_multiplier *= 1
 			else:
-				if _is_grounded(oppo,field) and movetype == PokemonType.GROUND and PokemonType.FLYING in oppo_types:
-					oppo_types.remove(PokemonType.FLYING)
-				if ability == "scrappy" and movetype in (PokemonType.NORMAL,PokemonType.FIGHTING) and PokemonType.GHOST in oppo_types:
-					oppo_types.remove(PokemonType.GHOST)
-				damage_multiplier = movetype.damage_multiplier(*oppo_types)
-			
+				if _is_grounded(oppo,field) and movetype == PokemonType.GROUND:		
+					for _type in oppo_types:
+						if _type != PokemonType.FLYING:
+							damage_multiplier *= movetype.damage_multiplier(_type)
+				else:			
+					if ability == "scrappy" and movetype in (PokemonType.NORMAL,PokemonType.FIGHTING):
+						for _type in oppo_types:
+							if _type != PokemonType.GHOST:
+								damage_multiplier *= movetype.damage_multiplier(_type)
+					else:
+						for _type in oppo_types:
+							damage_multiplier *= movetype.damage_multiplier(_type)
 			if v[1] or v[2] or v[53] or move._id == "thunderwave":
 				if damage_multiplier == 0:
 					v = v * vclear 
@@ -822,7 +868,7 @@ def modified_move_vector(
 				if typeboostitem[item] == movetype:
 					damage_multiplier *= 1.2
 			if oppo_item in antitypeberry:
-				if typeboostitem[item] == movetype:
+				if antitypeberry[oppo_item] == movetype:
 					damage_multiplier *= 0.5
 					v[99] = 1	
 					if oppo_ability == "cheekpouch":
@@ -1002,19 +1048,19 @@ def modified_move_vector(
 					_weather,
 					_field,
 					_side,_oppo_side,
-					_counts_ability, 
-					_counts_item,
-					_counts_oppo_ability, 
-					_counts_oppo_item,
+					ability, 
+					item,
+					oppo_ability, 
+					oppo_item,
 					_crit = True)
 
 
 
 			if move._id == "bodypress":
-				damage_multiplier *= pokemon_vectorize(mon,weather,field,counts_ability,counts_item)[17] / pokemon_vectorize(mon,weather,field,False,False)[17]
+				damage_multiplier *= pokemon_vectorize(mon,weather,field,ability,item)[17] / pokemon_vectorize(mon,weather,field,False,False)[17]
 				m_stats[0] = pokemon_vectorize(mon,weather,field,False,False)[18]
 			if move._id == "foulplay":
-				damage_multiplier *= pokemon_vectorize(mon,weather,field,counts_ability,counts_item)[17] / pokemon_vectorize(mon,weather,field,False,False)[17]
+				damage_multiplier *= pokemon_vectorize(mon,weather,field,ability,item)[17] / pokemon_vectorize(mon,weather,field,False,False)[17]
 				m_stats[0] = pokemon_vectorize(oppo,weather,field,False,False)[17]		
 			if move._id in ("psychick","psystrike","secretsword"):
 				o_stats[3] = o_stats[1]
@@ -1036,7 +1082,7 @@ def modified_move_vector(
 
 			v[1] *=  ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / o_stats[1] / oppo._stats[1] * damage_multiplier
 			v[2] *= ( 2 * mon._mon._level + 10) / 250 * m_stats[2] / o_stats[3] / oppo._stats[1] * damage_multiplier
-			
+
 			if oppo._stats[0] == oppo._stats[1]:
 				if oppo_item == "focussash":
 					if v[1] > 1:
@@ -1054,9 +1100,9 @@ def modified_move_vector(
 
 
 
-		if pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[14]:
+		if pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[14]:
 			sub_damage =  v[1]+v[2]+v[53]
-			if Effects.SUBSTITUTE in oppo_effects and ability != "infiltrator" and v[32] != 1:
+			if Effect.SUBSTITUTE in oppo_effects and ability != "infiltrator" and v[32] != 1:
 				if v[1]+v[2]+v[53] > 1/4:
 					v[54] = 1
 					if v[30]:
@@ -1069,7 +1115,7 @@ def modified_move_vector(
 					v[1:3] *= 0.001
 					v[53] = 0.001
 				if move.entry["category"] == "Status":
-					v = v * vc
+					v = v * vclear
 			else: 
 				if oppo._mon._species == "mimikyu":
 					if v[1]+v[2]+v[53]:
@@ -1083,45 +1129,10 @@ def modified_move_vector(
 		
 
 
-
-
-
-
-
-
-
-
-
-	
-
-
-
-
-
-
-	
-
-
-
-
-
-
-
-
-		
-
-
-
-
-
-
-
-
-
 	#p9. modifies side effect
 	v[6:20] *= 1 + v[30]
 	for i in range(0,5):
-		v[20+i] = 1 - ( 1 - v[20+i] ) * 0.7 ** ( 1 + v[30] )
+		v[20+i] = 1 - ( 1 - v[20+i] ) ** ( 1 + v[30] )
 
 	if oppo_ability == "magicbounce":
 		if "reflectable" in move.entry["flags"]:
@@ -1141,7 +1152,7 @@ def modified_move_vector(
 		
 
 	if oppo_ability == "baddreams":								#Nightmare
-		if mon._mon._status.name == "SLP" or ability == "comatose":
+		if mon._mon._status and mon._mon._status.name == "SLP" or ability == "comatose":
 			pdmg += 1/8
 
 
@@ -1192,6 +1203,11 @@ def modified_move_vector(
 		if oppo_ability == "sandspit":
 			v[85] = 1
 
+		if move._id == "spectralthief":							
+			for i in range(0,5):
+				v[6+i] = 0.01 + stealboosts[i]
+				v[13+i] = - 0.01 - stealboosts[i]
+
 		#contact
 		if v[31]:
 			if oppo_ability in ("roughskin","ironbarbs"):
@@ -1203,7 +1219,7 @@ def modified_move_vector(
 				v[93] = 1 - ( 1 - v[93] ) * 0.7 ** ( 1 + v[30] )
 			if oppo_ability == "static":
 				v[95] = 1 - ( 1 - v[93] ) * 0.7 ** ( 1 + v[30] )
-			if oppo_abiliy == "effectspore":
+			if oppo_ability == "effectspore":
 				if item != "safetygoggles" and ability != "overcoat" and PokemonType.GRASS not in types:
 					v[93] = 1 - ( 1 - v[93] ) * 0.9 ** ( 1 + v[30] )
 					v[95] = 1 - ( 1 - v[95] ) * 0.9 ** ( 1 + v[30] )
@@ -1256,8 +1272,7 @@ def modified_move_vector(
 		if ability in ("grimneigh","asonespectrier"):
 			v[7] += 1
 		if ability == "beastboost":									#test this
-			tempstats = np.zeros(5)
-			tempstats = pokemon_vectorize(mon,{},{},False,False)[17:22]
+			tempstats = list(pokemon_vectorize(mon,{},{},False,False)[17:22])
 			i = tempstats.index(max(tempstats))
 			v[6+i] += 1 
 		if move._id == "fellstinger":
@@ -1266,7 +1281,7 @@ def modified_move_vector(
 			pdmg += oppo._stats[0] / mon._stats[1]
 
 
-	if v[1]+v[2]+v[53]-pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[8] > oppo._stats[0] / oppo._stats[1]:
+	if v[1]+v[2]+v[53]-pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[8] > oppo._stats[0] / oppo._stats[1]:
 		if ability == "soulheart":
 			v[7] += 1
 
@@ -1468,7 +1483,7 @@ def modified_move_vector(
 
 	if oppo_ability == "suctioncups":
 		v[39] = 0
-	if PokemonType.GHOST in oppo_types or oppo_item == "shedshell" or pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_counts_ability,oppo_counts_item)[15]:
+	if PokemonType.GHOST in oppo_types or oppo_item == "shedshell" or pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[15]:
 		v[42] = 0
 	if Effect.INGRAIN in effects and move._id == "ingrain":
 		v[43] = 0
@@ -1492,9 +1507,9 @@ def modified_move_vector(
 		v[61] = 0
 	if Effect.LEECH_SEED in oppo_effects or PokemonType.GRASS in oppo_types:
 		v[62] = 0
-	if EFFECT.MAGNET_RISE in effects:
+	if Effect.MAGNET_RISE in effects:
 		v[65] = 0
-	if EFFECT.SUBSTITUTE in effects:
+	if Effect.SUBSTITUTE in effects:
 		v[67] = 0		
 	if oppo_ability == "oblivious" or Effect.TAUNT in oppo_effects:
 		v[68] = 0
@@ -1531,7 +1546,6 @@ def modified_move_vector(
 	if v[78]:
 		if move._id == "defog":
 			v[78] *= (2 * side_condition_vectorize(side,0)[8] - side_condition_vectorize(oppo_side,0)[8])
-			v[78] = max(v[78],0.1)
 		if move._id == "rapidspin":
 			v[78] *= side_condition_vectorize(side,0)[7]
 
@@ -1589,8 +1603,8 @@ def modified_move_vector(
 
 	if move._id == "haze" and item != "assaultvest" and Effect.TAUNT not in effects:
 		for i in range(0,7):
-			v[6+i] = 0.1 - boosts[i]
-			v[13+i] = - 0.1 - oppo_boosts[i]
+			v[6+i] = 0.01 - boosts[i]
+			v[13+i] = - 0.01 - oppo_boosts[i]
 
 
 	return v
@@ -1606,7 +1620,7 @@ def modified_switch_vectorize(
 		_counts_oppo_ability = True, 
 		_counts_oppo_item = True):
 	v = modified_move_vector(
-		"switch",mon,oppo,_weather,_field,_side,_oppo_side,
+		Switch(),mon,oppo,_weather,_field,_side,_oppo_side,
 		_counts_ability = _counts_ability, 
 		_counts_item = _counts_item,
 		_counts_oppo_ability = _counts_oppo_ability, 
@@ -1619,8 +1633,8 @@ def modified_get_ability_vectorize(						#**** Neutralizing Gas
 		_weather,_field,_side,_oppo_side,
 		_gets_ability = True, 
 		_oppo_gets_ability = True):
-	v1 = modified_switch_vectorize(mon,oppo,_weather,_field,_side,_oppo_side,_counts_ability = _gets_ability, _counts_oppo_ability = True)
-	v2 = modified_switch_vectorize(mon,oppo,_weather,_field,_side,_oppo_side,_counts_ability = False, _counts_oppo_ability = 1 - _oppo_gets_ability)
+	v1 = modified_switch_vectorize(mon,oppo,_weather,_field,_side,_oppo_side,_gets_ability,True)
+	v2 = modified_switch_vectorize(mon,oppo,_weather,_field,_side,_oppo_side,False,1 - _oppo_gets_ability)
 	return v1-v2
 
 
@@ -1629,31 +1643,28 @@ def modified_get_ability_vectorize(						#**** Neutralizing Gas
 
 def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _counts_item = True):
 	v = np.zeros(30)
-	counts_ability = _counts_ability
-	counts_item = _counts_item
-	if counts_ability is True:
+	if _counts_ability is True and mon._mon._ability:
 		ability = mon._mon._ability		
 	else:
-		if counts_ability:
-			ability = counts_ability
+		if _counts_ability is str:
+			ability = _counts_ability
 		else:
 			ability = ""
-	counts_item = _counts_ability
 
-	if ability == "klutz" or Effect.EMBARGO in mon._mon._effects:
-		counts_item = False
-	if Field.WONDER_ROOM in field: 
-		counts_item = False
 
-	if counts_item is True:
+	if _counts_item is True and mon._mon._item:
 		item = mon._mon._item		
 	else:
-		if counts_item:
-			item = counts_item
+		if _counts_item is str:
+			item = _counts_item
 		else:
 			item = ""
+	if ability == "klutz" or Effect.EMBARGO in mon._mon._effects:
+		item = ""
+	if Field.WONDER_ROOM in field: 
+		item = ""
 
-	types = (mon._mon._type_1,mon._mon._type_2)
+	types = mon._mon.types
 	dpt = 0 
 	hpt = 0 								#heal 1/16 per turn
 	v[0] = mon._stats[0] / mon._stats[1]
@@ -1775,7 +1786,7 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		if Effect.MAGMA_STORM in effects:
 			dpt += 2
 			v[15] = 5 - effects[Effect.MAGMA_STORM]
-		if Effect.MIGHTMARE in effects:
+		if Effect.NIGHTMARE in effects:
 			dpt += 4
 		if Effect.NO_RETREAT in effects:
 			v[15] = 10
@@ -1913,7 +1924,6 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 
 def move_vectorize(move:Move):
 	v = np.zeros(100)
-
 	v[0] = move.priority
 	basepower = move.base_power
 
@@ -1933,23 +1943,8 @@ def move_vectorize(move:Move):
 		v[1] = 13
 		v[30] = 4
 
-
-	v[3] = max(v[1],v[2]) * 0.04 #std error
-	if isinstance(move.entry.get("multihit",{}),list):
-		v[3] = max(v[1],v[2]) * 1.07
-		v[30] = 13/6
-	else:
-		if move.entry.get("multihit",{}) == 2:
-			v[3] = max(v[1],v[2]) * 0.06
-			v[30] = 1
-		else:
-			if move.entry.get("multihit",{}) == 3:
-				if move._id == "surgingstrikes":
-					v[3] = max(v[1],v[2]) * 0.07
-					v[30] = 2
-				else:
-					v[3] = max(v[1],v[2]) * 1.67
-					v[30] = 2
+	if move.entry["category"] == "Status":
+		v[3] = 1
 
 	v[4] = move.accuracy
 	if move.entry["accuracy"] is True:
@@ -1997,7 +1992,7 @@ def move_vectorize(move:Move):
 	_chance = 1
 	_boosts = {}
 	if move.entry.get("boosts",{}):
-		if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","any"):
+		if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","randomNormal","any"):
 			_boosts = move.entry.get("boosts",{})
 	if move.entry.get("secondary",{}):
 		_boosts = move.entry.get("secondary",{}).get("boosts",{})
@@ -2053,6 +2048,7 @@ def move_vectorize(move:Move):
 		v[24] = _chance
 	if _status == "tox":
 		v[23] = 2 * _chance
+	
 
 	if move._id == "triattack":								#these things are not correct but nvm
 		v[20] = 1/15
@@ -2060,7 +2056,7 @@ def move_vectorize(move:Move):
 		v[22] = 1/15
 	if move._id == "banefulbunker":
 		v[23] = 0.3
-	if move_id == "burningjealousy":
+	if move._id == "burningjealousy":
 		v[20] = 0.3
 
 
@@ -2104,10 +2100,8 @@ def move_vectorize(move:Move):
 		v[31] = 1
 	if "sound" in move.entry["flags"]:
 		v[32] = 1
-	if "powder" in move.entry["flags"]:
+	if "powder" in move.entry["flags"]:						#v[34] empty
 		v[33] = 1		
-	if "defrost" in move.entry["flags"]:
-		v[34] = 1
 	if "charge" in move.entry["flags"]:
 		v[35] = 1
 		if "condition" in move.entry:
@@ -2154,6 +2148,9 @@ def move_vectorize(move:Move):
 	if move._id == "metalburst":
 		v[51] = 1.5
 		v[52] = 1.5
+	if move._id == "sucherpunch":				#nvm
+		v[51] = 0.2
+		v[52] = 0.2
 	if "damage" in move.entry:
 		if move.entry["damage"] == "level":
 			v[53] = level
@@ -2247,9 +2244,9 @@ def move_vectorize(move:Move):
 	if move._id in ("rapidspin","defog"):
 		v[78] = 1
 	if move._id == "lashout":
-		v[79] = -1
-	if move._id == "burningjealousy":
 		v[79] = 1
+	if move._id == "burningjealousy":
+		v[79] = 2
 
 	if move._id in ("healbell","aromatherapy","junglehealing"):
 		v[80] = 2
@@ -2369,7 +2366,7 @@ def _is_grounded(mon:PokemonSet,field:Optional[Dict]):
 		return True
 	if Effect.SMACK_DOWN in mon._mon._effects:
 		return True
-	if mon._mon._item == "ironball":
+	if field and Field.WONDER_ROOM not in field and mon._mon._item == "ironball" and mon._mon._ability != "klutz":
 		return True
 	if PokemonType.FLYING in mon._mon.types:
 		return False
@@ -2453,8 +2450,10 @@ def reversalpower(ms,os):
 
 
 
-
-
+def vectordebug(v):
+	for i in range (0,len(v)):
+		if v[i] != 0:
+			print("v[%d]="%i,v[i])
 
 
 
@@ -2482,5 +2481,7 @@ def reversalpower(ms,os):
 	Quick Draw, Quick Claw
 	Unseen fist
 	mirrorcoat,etc
+	sucker punch
 
 '''
+
