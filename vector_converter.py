@@ -1097,6 +1097,10 @@ def modified_move_vector(
 					if v[2] > 1:
 						v[2] = 0.999
 
+			if oppo._mon._species == "shedinja":
+				v[1] = min(v[1],4)
+				v[2] = min(v[2],4)
+				v[53] = min(v[53],4)
 
 
 
@@ -1154,10 +1158,9 @@ def modified_move_vector(
 	if oppo_ability == "baddreams":								#Nightmare
 		if mon._mon._status and mon._mon._status.name == "SLP" or ability == "comatose":
 			pdmg += 1/8
+	if Effect.SUBSTITUTE in effects or mon._stats[0] / mon._stats[1] < 1/4:
+		v[92] *= 0.5
 
-
-	if Effect.SUBSTITUTE in effects:
-		v[92] = 0
 
 
 
@@ -1412,6 +1415,15 @@ def modified_move_vector(
 		for i in range(0,7):
 			if v[13+i] < 0:
 				v[13+i] = 0
+	if ability == "unaware":
+		for i in range(0,4):
+			if v[13+i] > 0:
+				v[13+i] *=0.3
+	if oppo_ability == "unaware":								#nvm
+		for i in range(0,4):
+			if v[6+i] > 0:
+				v[6+i] = 0.1
+
 	if ability == "contrary":
 		v[6:13] *= -1		
 	if oppo_ability == "contrary":
@@ -1942,9 +1954,8 @@ def move_vectorize(move:Move):
 	if move._id == "beatup":
 		v[1] = 13
 		v[30] = 4
-
-	if move.entry["category"] == "Status":
-		v[3] = 1
+			
+	#v[3] for pp when pp<5
 
 	v[4] = move.accuracy
 	if move.entry["accuracy"] is True:
@@ -2100,7 +2111,7 @@ def move_vectorize(move:Move):
 		v[31] = 1
 	if "sound" in move.entry["flags"]:
 		v[32] = 1
-	if "powder" in move.entry["flags"]:						#v[34] empty
+	if "powder" in move.entry["flags"]:						#slot empty
 		v[33] = 1		
 	if "charge" in move.entry["flags"]:
 		v[35] = 1

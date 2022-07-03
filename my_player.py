@@ -46,20 +46,66 @@ import vector_converter as vc
 from pokemonset import PokemonSet
 
 class MyPlayer(Player):
+    __slots__ = (                                       #add forceswitchrequest
+        "forceswitchrequest",
+    )
+    def __init__(
+        self,
+        player_configuration: Optional[PlayerConfiguration] = None,
+        *,
+        avatar: Optional[int] = None,
+        battle_format: str = "gen8randombattle",
+        log_level: Optional[int] = None,
+        max_concurrent_battles: int = 1,
+        save_replays: Union[bool, str] = False,
+        server_configuration: Optional[ServerConfiguration] = None,
+        start_timer_on_battle_start: bool = False,
+        start_listening: bool = True,
+        team: Optional[Union[str, Teambuilder]] = None,
+    ) -> None:
+        if player_configuration is None:
+            player_configuration = _create_player_configuration_from_player(self)
+
+        if server_configuration is None:
+            server_configuration = LocalhostServerConfiguration
+
+        super(Player, self).__init__(
+            player_configuration=player_configuration,
+            avatar=avatar,
+            log_level=log_level,
+            server_configuration=server_configuration,
+            start_listening=start_listening,
+        )
+
+        self._format: str = battle_format
+        self._max_concurrent_battles: int = max_concurrent_battles
+        self._save_replays = save_replays
+        self._start_timer_on_battle_start: bool = start_timer_on_battle_start
+
+        self._battles: Dict[str, AbstractBattle] = {}
+        self._battle_semaphore: Semaphore = Semaphore(0)
+
+        self._battle_start_condition: Condition = Condition()
+        self._battle_count_queue: Queue = Queue(max_concurrent_battles)
+        self._battle_end_condition: Condition = Condition()
+        self._challenge_queue: Queue = Queue()
+
+        if isinstance(team, Teambuilder):
+            self._team = team
+        elif isinstance(team, str):
+            self._team = ConstantTeambuilder(team)
+        else:
+            self._team = None
+
+        self.logger.debug("Player initialisation finished")
+        self.forceswitchrequest = 0
+
+
     async def _handle_battle_message(self, split_messages: List[List[str]]) -> None:
-        """Handles a battle message.
 
-        :param split_message: The received battle message.
-        :type split_message: str
-        """
-        # Battle messages can be multiline
-
-                # my_handle_message(split_message)
                 # todo: record damage (also crit, anti-type berry) and transmit to building guesser
                 # todo: find if enemy have attacked (!focus punch)
-                # todo: add future sight as side
                 # todo: add outrage/... as encore effect
-                # todo: weather starting time
 
 
         #print(split_messages,"\n")
@@ -83,12 +129,16 @@ class MyPlayer(Player):
                 if split_message[2]:
                     request = orjson.loads(split_message[2])
                     battle._parse_request(request)
-                    if battle.move_on_next_request:
+                    if "forceSwitch" in request and request["forceSwitch"][0] is True:            #nvm with "upkeep"
+                        self.forceswitchrequest = True
                         await self._handle_battle_request(battle)
-                        battle.move_on_next_request = False
+                    else:
+                        if battle.move_on_next_request:
+                            await self._handle_battle_request(battle)
+                            battle.move_on_next_request = False
             elif split_message[1] == "win" or split_message[1] == "tie":
                 if split_message[1] == "win":
-                    battle._won_by(split_message[2])
+                    battle._won_by(split_message[2])                                        #nvm
                     if battle._won:
                         print(split_message[2],"wins\n\n")
                 else:
@@ -167,20 +217,49 @@ class MyPlayer(Player):
             elif split_message[1] == "bigerror":
                 self.logger.warning("Received 'bigerror' message: %s", split_message)
             else:
-                self.my_parse_message(battle,split_message)
+                #battle._parse_message(split_message)
+                if split_messages.index(split_message) == len(split_messages)-1 and self.forceswitchrequest == 1:
+                    self.forceswitchrequest += 1   
+                              
+                await self.my_parse_message(battle,split_message)
+
                 
                 
             
 
-    def my_parse_message(self,battle,split_message):
+    async def my_parse_message(self,battle,split_message):
         # ignore things like "['', '-weather', 'RainDance', '[upkeep]']"
         if split_message[1] == "-weather":
             if "[upkeep]" in split_message:
-                return 0
-
+                return 0       
+        if self.forceswitchrequest == 2:
+            battle._parse_message(split_message)
+            self.forceswitchrequest = 0
+            if battle.move_on_next_request:            
+                await self._handle_battle_request(battle)
+                battle.move_on_next_request = False                
+            return 0
         battle._parse_message(split_message)
 
+    async def _handle_battle_request(
+        self,
+        battle: AbstractBattle,
+        from_teampreview_request: bool = False,
+        maybe_default_order=False,
+    ):
+        if maybe_default_order and random.random() < self.DEFAULT_CHOICE_CHANCE:
+            message = self.choose_default_move(battle).message
+        elif battle.teampreview:
+            if not from_teampreview_request:
+                return
+            message = self.teampreview(battle)
+        else:
+            if self.forceswitchrequest:
+                message = ""
+            else:
+                message = self.choose_move(battle).message
 
+        await self._send_message(message, battle.battle_tag)
 
 
     def show_info(self,_mon,battle):
@@ -190,26 +269,19 @@ class MyPlayer(Player):
         ability = mon._mon._ability
         item = mon._mon._item                        
         print(mon._mon._species,stats,ability,item)
-        print(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
+        vc.vectordebug(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
         if _mon.active:
-            boosts = list(_mon._boosts.values())
-            acc = boosts.pop(0)
-            eva = boosts.pop(2)
-            boosts.append(acc)
-            boosts.append(eva)
-            print("boosts:",boosts)
             print("effects:",_mon._effects)    
-            print("protect_counter:",_mon._protect_counter) 
-        print("\n")
+            #print("protect_counter:",_mon._protect_counter) 
 
 
     def show_down(self,battle):
         if battle.active_pokemon:
             _mon = battle.active_pokemon
             self.show_info(_mon,battle)
-        for _mon in battle.team.values():
-            if not _mon.active:
-                self.show_info(_mon,battle)
+    #    for _mon in battle.team.values():
+    #        if not _mon.active:
+    #            self.show_info(_mon,battle)
  
 
     def show_opponent(self,battle): 
