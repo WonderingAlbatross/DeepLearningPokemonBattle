@@ -124,7 +124,7 @@ def modified_move_vector(
 	if _counts_ability is True and mon._mon._ability:
 		ability = mon._mon._ability		
 	else:
-		if _counts_ability is str:							#Test this!
+		if _counts_ability is str:							
 			ability = _counts_ability
 		else:
 			ability = ""
@@ -140,7 +140,7 @@ def modified_move_vector(
 			ability = ""
 		if oppo_ability not in ("comatose","asoneglastrier","asonespectrier"):
 			oppo_ability = ""
-	if ability == "trace":
+	if ability == "trace" and oppo_ability not in ("flowergift","comatose","asoneglastrier","asonespectrier"):
 		ability = oppo_ability
 	if oppo_ability == "trace":
 		oppo_ability = ability
@@ -520,6 +520,11 @@ def modified_move_vector(
 	if move._id == "noretreat":
 		if Effect.NO_RETREAT in effects:
 			v[1:] *= 0
+	if mon._last_move == "wish" and move._id == "wish":
+		v[1:] *= 0
+	if mon._last_move == "destinybond" and move._id == "destinybond":
+		v[1:] *= 0
+
 
 	if oppo_ability == "wonderguard":
 		if v[1] or v[2] or v[53]:
@@ -1208,8 +1213,12 @@ def modified_move_vector(
 
 		if move._id == "spectralthief":							
 			for i in range(0,5):
-				v[6+i] = 0.01 + stealboosts[i]
-				v[13+i] = - 0.01 - stealboosts[i]
+				if stealboosts[i] > 0:
+					v[6+i] += 0.01 + stealboosts[i]
+					v[13+i] += - 0.01 - stealboosts[i]
+		if move._id == "clearsmog":							
+			for i in range(0,5):
+				v[13+i] = -stealboosts[i]
 
 		#contact
 		if v[31]:
@@ -1355,6 +1364,7 @@ def modified_move_vector(
 	if ability == "shedskin":
 		v[80] += 1/3
 
+
 	#side-effect-inmune
 	if Weather.SUNNYDAY in oppo_weather:
 		if oppo_ability == "leafguard":
@@ -1488,6 +1498,7 @@ def modified_move_vector(
 			v[27] = 0
 	v[26] = heal - pdmg - selfattact + v[28] * ( 1 - v[4])
 	v[27] *= (v[1]+v[2]+v[53]) * oppo._stats[1] / mon._stats[1]
+	v[26] += pokemon_vectorize(mon,weather,field,ability,item)[8]
 
 	if move._id == "painsplit": 
 		v[53] = (oppo._stats[0] - mon._stats[0]) / oppo._stats[1] / 2
@@ -1550,7 +1561,7 @@ def modified_move_vector(
 	if SideCondition.TAILWIND in side:
 		v[76] = 0
 	if Field.TRICK_ROOM in side:
-		v[77] *= 0.1
+		v[77] *= -1
 		v[76] *= -1
 	if Field.GRAVITY in _field:
 		v[66] = 0
@@ -1617,8 +1628,12 @@ def modified_move_vector(
 		for i in range(0,7):
 			v[6+i] = 0.01 - boosts[i]
 			v[13+i] = - 0.01 - oppo_boosts[i]
-
-
+	
+	for i in range(0,7):
+		v[6+i] = min(v[6+i],6-boosts[i])
+		v[6+i] = max(v[6+i],-6-boosts[i])
+		v[13+i] = min(v[13+i],6-oppo_boosts[i])
+		v[13+i] = max(v[13+i],-6-oppo_boosts[i])
 	return v
 
 def modified_switch_vectorize(
@@ -2311,6 +2326,8 @@ def move_vectorize(move:Move):
 		v[97] = 1
 	
 #98 use item #99 use oppo_item	
+
+
 	return v
 
 
@@ -2466,6 +2483,107 @@ def vectordebug(v):
 		if v[i] != 0:
 			print("v[%d]="%i,v[i])
 
+def threating_rate(mon,oppo,weather,field,side,oppo_side):
+	def priority(move,d):
+		if d:
+			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
+		else:
+			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
+		return v[0]
+	def prioried_damage(move,d):
+		if d:
+			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
+		else:
+			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
+		if v[1] + v[2] +v[53]:
+			return v[1] + v[2] +v[53] +v[0]*10
+		else:
+			return 0
+	def damage(move,d):
+		if d:
+			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
+		else:
+			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
+		return v[1] + v[2] +v[53]
+	def heal(move,d):
+		if d:
+			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
+		else:
+			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
+		return v[26] + v[27]
+	most_threating_quick_move = max(mon._mon.moves, key=lambda move: prioried_damage(move,1))
+	most_threating_move = max(mon._mon.moves, key=lambda move: damage(move,1))
+	heal_move = max(mon._mon.moves, key=lambda move: heal(move,1))
+	oppo_most_threating_quick_move = max(oppo._mon.moves, key=lambda move: prioried_damage(move,0))
+	oppo_most_threating_move = max(oppo._mon.moves, key=lambda move: damage(move,0))
+	oppo_heal_move = max(oppo._mon.moves, key=lambda move: heal(move,0))
+	mt = [priority(most_threating_move,1),damage(most_threating_move,1),heal(most_threating_move,1)]
+	mq = [priority(most_threating_quick_move,1),damage(most_threating_quick_move,1),heal(most_threating_quick_move,1)]
+	mh = [priority(heal_move,1),damage(heal_move,1),heal(heal_move,1)]
+	ot = [priority(oppo_most_threating_move,0),damage(oppo_most_threating_move,0),heal(oppo_most_threating_move,0)]
+	oq = [priority(oppo_most_threating_quick_move,0),damage(oppo_most_threating_quick_move,0),heal(oppo_most_threating_quick_move,0)]
+	oh = [priority(oppo_heal_move,0),damage(oppo_heal_move,0),heal(oppo_heal_move,0)]
+	remain_hp = mon._stats[0] / mon._stats[1]
+	oppo_remain_hp = oppo._stats[0] / oppo._stats[1]
+
+	
+	if oh[2] > mt[1]:
+		if oppo_remain_hp > mq[1] or oh[0] > mq[0]:
+			if oppo_remain_hp > mt[1] or oh[0] > mt[0]:
+				if mh[2] > ot[1]:
+					if remain_hp > oq[1] or mh[0] > oq[0]:
+						if remain_hp > ot[1] or mh[0] > ot[0]:
+							return min(10,max(0.1,(mt[1]+0.001)/(ot[1]+0.001)))
+				else:
+					return max(0.1,(mt[1]+0.001))
+	else:
+		if mh[2] > ot[1]:
+			if remain_hp > oq[1] or mh[0] > oq[0]:
+				if remain_hp > ot[1] or mh[0] > ot[0]:
+					return min(10,(1/(ot[1]+0.001)))
+
+
+
+	if mt[0] > ot[0]:
+		konumber = int((oppo_remain_hp-mq[1]-min(ot[2],0))/(mt[1]-ot[2]))
+		oppo_konumber = int(min(1,remain_hp-oq[1]+mt[2])/(ot[1]-mt[2]))
+	else:
+		if mt[0] < ot[0]:
+			konumber = int(min(1,oppo_remain_hp-mq[1]+ot[2])/(mt[1]-ot[2]))
+			oppo_konumber = int((remain_hp-oq[1]-min(mt[2],0))/(ot[1]-mt[2]))
+		else:
+			konumber = int((oppo_remain_hp-mq[1])/(mt[1]-ot[2]))
+			oppo_konumber = int((remain_hp-oq[1])/(ot[1]-mt[2]))
+	
+	remain_hp -= (ot[1]-mt[2]) * min(konumber,oppo_konumber)
+	oppo_remain_hp -= (mt[1]-ot[2]) * min(konumber,oppo_konumber)
+
+	if remain_hp > oq[1]:
+		oppo_remain_hp = 0
+		if mq[0] < oq[0]:
+			remain_hp -= oq[1]
+		if mq[0] == oq[0]:
+			remain_hp -= oq[1]/2
+	else:
+		if oppo_remain_hp > mq[1]:
+			remain_hp = 0
+			if mq[0] > oq[0]:
+				oppo_remain_hp -= mq[1]
+			if mq[0] == oq[0]:
+				oppo_remain_hp -= mq[1]/2
+		else:
+			if mq[0] < oq[0]:
+				remain_hp = 0
+			if mq[0] > oq[0]:
+				oppo_remain_hp = 0
+
+	if remain_hp == 0:
+		return max(0.1,1-oppo_remain_hp)
+	if oppo_remain_hp == 0:
+		return min(10,1/(1.001-remain_hp))
+
+
+	return 1
 
 
 
@@ -2493,6 +2611,6 @@ def vectordebug(v):
 	Unseen fist
 	mirrorcoat,etc
 	sucker punch
-
+	Ditto
 '''
 
