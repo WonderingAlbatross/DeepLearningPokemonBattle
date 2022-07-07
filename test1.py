@@ -138,7 +138,7 @@ EVs: 252 HP / 252 SpD
 IVs: 0 Atk  
 - Dazzling Gleam
 """
-
+'''
 player_2 = RandomPlayer(
     battle_format="gen8ubers", team=team_2, max_concurrent_battles=1
 )
@@ -147,7 +147,6 @@ player_2 = RandomPlayer(
 player_2 = AmateurPlayer(
     battle_format="gen8randombattle", max_concurrent_battles=1
 )
-'''
 
 
 class CheatingPlayer(MyPlayer):
@@ -159,15 +158,35 @@ class CheatingPlayer(MyPlayer):
             battle._finish_battle()
 
         start_time = time.time()    
-        print("turn:",battle._turn)    
+        print("turn:",battle._turn)
+#        print("safeswitch?",self.oppohaveactioned[battle])   
         global scorelist
         global vectorlist
-        #print all information
-
-        score = getscore(battle,battle2,0)
-#        trm = vc.threating_rate_matrix(battle,battle2)
-#        score += fainting_score * sum(sum(np.log10(trm)))
         
+        score = getscore(battle,battle2,0)
+
+        
+        alive_mon = []                                                         #simplify this later
+        alive_oppo = []
+        for _mon in battle._team: 
+            if not battle._team[_mon].fainted:
+                alive_mon.append(_mon)
+        for _oppo in battle2._team:
+            if not battle2._team[_oppo].fainted:
+                alive_oppo.append(_oppo)
+        threating_rate = vc.threating_rate_dict(battle,battle2)
+        threating_rate_matrix = np.zeros((len(alive_mon),len(alive_oppo)))
+        i = 0
+        for _mon in threating_rate:
+            j = 0
+            for _oppo in threating_rate[_mon]:
+                score += fainting_score * np.log10(threating_rate[_mon][_oppo])
+                threating_rate_matrix[i,j] = threating_rate[_mon][_oppo]
+                j += 1
+            i += 1
+        
+
+
         scorelist += [score]
 
  #       print("score:", score)   
@@ -187,7 +206,7 @@ class CheatingPlayer(MyPlayer):
             if battle.available_switches:
                 best_move = switchchooser(battle,battle2)
 
- #       print("running time:",time.time()-start_time)
+        print("running time:",time.time()-start_time)
         return self.create_order(best_move)
 
         
@@ -388,10 +407,10 @@ IVs: 0 Spe
     
 
     cheating_player_1 = CheatingPlayer(
-        battle_format="gen8ubers", team=team_1, max_concurrent_battles=1
+        battle_format="gen8randombattle", max_concurrent_battles=1
     )
 
-    n_battles = 1
+    n_battles = 10
     await cheating_player_1.battle_against(player_2, n_battles)
 
     print(

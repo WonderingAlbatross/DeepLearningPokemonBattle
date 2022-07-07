@@ -48,7 +48,7 @@ from pokemonset import PokemonSet
 class MyPlayer(Player):
     __slots__ = (                                       #add forceswitchrequest
         "forceswitchrequest",
-        "oppohaveactioned"                                       #todo: change to dict : battle to bool
+        "oppohaveactioned"                                       
     )
     def __init__(
         self,
@@ -99,8 +99,8 @@ class MyPlayer(Player):
             self._team = None
 
         self.logger.debug("Player initialisation finished")
-        self.forceswitchrequest = 0
-        self.oppohaveactioned = False
+        self.forceswitchrequest = {}
+        self.oppohaveactioned = {}
 
 
     async def _handle_battle_message(self, split_messages: List[List[str]]) -> None:
@@ -110,7 +110,7 @@ class MyPlayer(Player):
                 # todo: add outrage/... as encore effect
 
 
-        print(split_messages,"\n")
+        #print(split_messages,"\n")
 
         if (
             len(split_messages) > 1
@@ -118,9 +118,11 @@ class MyPlayer(Player):
             and split_messages[1][1] == "init"
         ):
             battle_info = split_messages[0][0].split("-")
-            battle = await self._create_battle(battle_info)
+            battle = await self._create_battle(battle_info)                                                             
+            
         else:
             battle = await self._get_battle(split_messages[0][0])
+
 
         for split_message in split_messages[1:]:
             if len(split_message) <= 1:
@@ -132,7 +134,7 @@ class MyPlayer(Player):
                     request = orjson.loads(split_message[2])
                     battle._parse_request(request)
                     if "forceSwitch" in request and request["forceSwitch"][0] is True:            #nvm with "upkeep"
-                        self.forceswitchrequest = True
+                        self.forceswitchrequest[battle] = 1
                         await self._handle_battle_request(battle)
                     else:
                         if battle.move_on_next_request:
@@ -211,7 +213,7 @@ class MyPlayer(Player):
                 else:
                     self.logger.critical("Unexpected error message: %s", split_message)
             elif split_message[1] == "turn":
-                self.oppohaveactioned = False                                                         #oppohaveactioned
+                self.oppohaveactioned[battle] = False                                                         #oppohaveactioned
                 battle._parse_message(split_message)
                 await self._handle_battle_request(battle)
             elif split_message[1] == "teampreview":
@@ -221,8 +223,8 @@ class MyPlayer(Player):
                 self.logger.warning("Received 'bigerror' message: %s", split_message)
             else:
                 #battle._parse_message(split_message)
-                if split_messages.index(split_message) == len(split_messages)-1 and self.forceswitchrequest == 1:
-                    self.forceswitchrequest += 1   
+                if split_messages.index(split_message) == len(split_messages)-1 and self.forceswitchrequest.get(battle,0) == 1:
+                    self.forceswitchrequest[battle] += 1   
                               
                 await self.my_parse_message(battle,split_message)
 
@@ -232,19 +234,18 @@ class MyPlayer(Player):
 
     async def my_parse_message(self,battle,split_message):
         # ignore things like "['', '-weather', 'RainDance', '[upkeep]']"
+        if split_message[1] == "move" and split_message[2].startswith("p2"):
+            self.oppohaveactioned[battle] = True 
         if split_message[1] == "-weather":
             if "[upkeep]" in split_message:
                 return 0       
-        if self.forceswitchrequest == 2:
+        if self.forceswitchrequest.get(battle,0) == 2:
             battle._parse_message(split_message)
-            self.forceswitchrequest = 0
-            if battle.move_on_next_request:    
-                print("oppohaveactioned",self.oppohaveactioned)      
+            self.forceswitchrequest[battle] = 0
+            if battle.move_on_next_request:         
                 await self._handle_battle_request(battle)
                 battle.move_on_next_request = False                
             return 0
-        if split_message[1] == "move" and split_message[2].startswith("p2"):
-            self.oppohaveactioned = True
         battle._parse_message(split_message)
 
     async def _handle_battle_request(
@@ -260,7 +261,7 @@ class MyPlayer(Player):
                 return
             message = self.teampreview(battle)
         else:
-            if self.forceswitchrequest:
+            if self.forceswitchrequest.get(battle,0) != 0 :
                 message = ""
             else:
                 message = self.choose_move(battle).message

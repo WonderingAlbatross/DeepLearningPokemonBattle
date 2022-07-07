@@ -262,11 +262,18 @@ def modified_move_vector(
 
 
 	#p4. modifies stats
-	m_stats = np.zeros(5)
-	m_stats = pokemon_vectorize(mon,weather,field,ability,item)[17:22]
-	o_stats = np.zeros(5)
-	o_stats = pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[17:22]
-
+	v_mon = np.zeros(25)
+	v_mon = pokemon_vectorize(mon,weather,field,ability,item)
+	v_oppo = np.zeros(25)
+	v_oppo = pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)
+	m_stats = np.zeros(7)
+	m_stats[0:5] = v_mon[17:22]
+	m_stats[5] = v_mon[0]
+	m_stats[6] = mon._stats[1]
+	o_stats = np.zeros(7)
+	o_stats[0:5] = v_oppo[17:22]
+	o_stats[5] = v_oppo[0]
+	o_stats[6] = oppo._stats[1]
 
 	boosts = list(mon._mon._boosts.values())
 	acc = boosts.pop(0)
@@ -442,12 +449,12 @@ def modified_move_vector(
 
 	if ability == "prankster" and move.entry["category"] == "Status":
 		v[0] += 1
-	if ability == "galewings" and movetype == PokemonType.FLYING and mon._stats[0] == mon._stats[1]:
+	if ability == "galewings" and movetype == PokemonType.FLYING and m_stats[5] == 1:
 		v[0] += 1
 	if ability == "triage" and (heal > 0 or v[27] > 0):
 		v[0] += 3
 
-	if item == "custapberry" and mon._stats[0] / mon._stats[1] < 1/4:
+	if item == "custapberry" and m_stats[6] < 1/4:
 		speed_ratio = 0.499
 		v[98] = 0
 
@@ -563,7 +570,7 @@ def modified_move_vector(
 	v[0] += speed_ratio
 
 
-
+	v[53] /= o_stats[6]														#turn to %
 
 	if move._id == "shellsidearm":
 		pd = pokemon_vectorize(oppo,{},{},False,False)[18]
@@ -607,11 +614,11 @@ def modified_move_vector(
 	if move._id == "electroball":
 		v[2] = electroballpower(m_stats[4],o_stats[4])
 	if move._id == "wringout":
-		v[2] = 1 + 120 * oppo._stats[0] / oppo._stats[1]
+		v[2] = 1 + 120 * o_stats[5]
 	if move._id == "crushgrip":
-		v[1] = 1 + 100 * oppo._stats[0] / oppo._stats[1]
+		v[1] = 1 + 100 * o_stats[5]
 	if move._id in ("waterspout","eruption","dragonenergy"):
-		v[2] = 150 * mon._stats[0] / mon._stats[1]
+		v[2] = 150 * m_stats[6]
 	if move._id in ("reversal","flail"):
 		v[1] = reversalpower(mon)
 	if move._id == "punishment":
@@ -639,7 +646,7 @@ def modified_move_vector(
 			v[1] *= 2
 
 	if move._id == "brine":
-		if oppo._stats[0] / oppo._stats[1] < 0.5:
+		if o_stats[5] < 0.5:
 			v[2] *= 2
 
 	if ability == "technician":
@@ -653,13 +660,13 @@ def modified_move_vector(
 
 
 	if move._id in ("naturesmadness","superfang"):
-		v[53] = oppo._stats[0] / 2
+		v[53] = o_stats[5] / 2
 	if move._id == "endeavor":
-		v[53] = max( 0, oppo._stats[0] - mon._stats[0] )
+		v[53] = max( 0, o_stats[5] - m_stats[6]*m_stats[6]/o_stats[6] )
 	if move._id == "finalgambit":
-		v[53] = mon._stats[0]
+		v[53] = m_stats[6] * m_stats[6] / m_stats[6]
 	if move.entry.get("volatileStatus","") == "partiallytrapped":
-		v[53] = oppo._stats[1] / 8
+		v[53] = o_stats[5] / 8
 
 	if mon._mon._status and mon._mon._status.name == "BRN" and ability != "guts" and move._id != "facade":
 		v[1] /= 2
@@ -680,7 +687,7 @@ def modified_move_vector(
 #		v[4] = 10
 #		v[1:3] *= 2
 
-	v[53] /= oppo._stats[1] 														#turn to %
+
 	
 
 	if move.entry.get("target",{}) in ("normal","allAdjacent","allAdjacentFoes","randomNormal","any"):
@@ -774,7 +781,7 @@ def modified_move_vector(
 
 	if Effect.CONFUSION in effects:
 		v[4] *= 2 / 3
-		selfattact += 40* ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / m_stats[1] / 3 / mon._stats[1]
+		selfattact += 40* ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / m_stats[1] / 3 / m_stats[6]
 	if Effect.ATTRACT in effects:
 		v[4] *= 0.5
 
@@ -865,7 +872,7 @@ def modified_move_vector(
 
 
 
-			if mon._stats[0] / mon._stats[1] < 1/3:
+			if m_stats[6] < 1/3:
 				if movetype == PokemonType.GRASS and ability == "overgrow":
 					damage_multiplier *= 1.5
 				if movetype == PokemonType.FIRE and ability == "blaze":
@@ -1009,7 +1016,7 @@ def modified_move_vector(
 				if "recoil" in move.entry or "hasCrashDamage" in move.entry:
 					damage_multiplier *= 1.2
 			if oppo_ability in ("multiscale","shadowshield"):
-				if oppo._stats[1] == oppo._stats[0]:
+				if o_stats[5] == 1:
 					damage_multiplier *= 0.5
 			if oppo_ability == "furcoat" and move.entry["category"] == "Physical":
 				damage_multiplier *= 0.5
@@ -1092,10 +1099,10 @@ def modified_move_vector(
 
 			damage_multiplier *= 0.925 # randomness
 
-			v[1] *=  ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / o_stats[1] / oppo._stats[1] * damage_multiplier
-			v[2] *= ( 2 * mon._mon._level + 10) / 250 * m_stats[2] / o_stats[3] / oppo._stats[1] * damage_multiplier
+			v[1] *=  ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / o_stats[1] / o_stats[6] * damage_multiplier
+			v[2] *= ( 2 * mon._mon._level + 10) / 250 * m_stats[2] / o_stats[3] / o_stats[6] * damage_multiplier
 
-			if oppo._stats[0] == oppo._stats[1]:
+			if o_stats[5] == 1:
 				if oppo_item == "focussash":
 					if v[1] > 1:
 						v[1] = 0.999
@@ -1171,7 +1178,7 @@ def modified_move_vector(
 	if oppo_ability == "baddreams":								#Nightmare
 		if mon._mon._status and mon._mon._status.name == "SLP" or ability == "comatose":
 			pdmg += 1/8
-	if Effect.SUBSTITUTE in effects or mon._stats[0] / mon._stats[1] < 1/4:
+	if Effect.SUBSTITUTE in effects or m_stats[6] < 1/4:
 		v[92] *= 0.5
 
 
@@ -1247,7 +1254,7 @@ def modified_move_vector(
 			if oppo_ability in ("gooey","tanglinghair"):
 				v[10] -= 1 * ( 1 + v[30] )		
 			if oppo_ability == "aftermath" and ability != "damp":
-				if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1]:
+				if v[1]+v[2]+v[53] > o_stats[5]:
 					pdmg += 1/4
 			if ability == "poisontouch":
 				v[23] += 1 - 0.7 ** ( 1 + v[30] )
@@ -1275,7 +1282,7 @@ def modified_move_vector(
 
 
 	if move._id == "strengthsap":
-		heal += o_stats[0]/mon._stats[1]
+		heal += o_stats[0]/m_stats[6]
 	if move._id in ("synthesis","morningsun","moonlight"):
 		if Weather.SUNNYDAY in weather:
 			heal += 1/6
@@ -1286,7 +1293,7 @@ def modified_move_vector(
 			heal += 1/6
 
 
-	if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1]:
+	if v[1]+v[2]+v[53] > o_stats[5]:
 		if ability in ("moxie","chillingneigh","asoneglastrier"):
 			v[6] += 1
 		if ability in ("grimneigh","asonespectrier"):
@@ -1298,10 +1305,10 @@ def modified_move_vector(
 		if move._id == "fellstinger":
 			v[6] += 3
 		if oppo_ability == "innardsout":
-			pdmg += oppo._stats[0] / mon._stats[1]
+			pdmg += o_stats[5] * o_stats[6] / m_stats[6]
 
 
-	if v[1]+v[2]+v[53]-pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[8] > oppo._stats[0] / oppo._stats[1]:
+	if v[1]+v[2]+v[53]-v_oppo[8] > o_stats[5]:
 		if ability == "soulheart":
 			v[7] += 1
 
@@ -1327,14 +1334,14 @@ def modified_move_vector(
 			v[38] = 0
 			v[99] = 1
 
-	if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1] - 1/4 and v[1]+v[2]+v[53] < 1:
+	if v[1]+v[2]+v[53] > o_stats[5] - 1/4 and v[1]+v[2]+v[53] < 1:
 		if oppo_item in giantberry:
 			v[53] -= 1/3
 			v[99] = 1
 			if oppo_ability == "cheekpouch":
 				v[53] -= 1/3
 	else:
-		if v[1]+v[2]+v[53] > oppo._stats[0] / oppo._stats[1] - 1/2:
+		if v[1]+v[2]+v[53] > o_stats[5] - 1/2:
 			if oppo_ability in ("wimpout","emergencyexit"):
 				v[39] = 1
 				v[38] = 0
@@ -1483,11 +1490,11 @@ def modified_move_vector(
 	if Effect.LEECH_SEED in oppo_effects:
 		if oppo_ability != "magicguard":
 			if oppo_ability == "liquidooze":
-				pdmg += oppo._stats[1] / mon._stats[1] / 8
+				pdmg += o_stats[6] / m_stats[6] / 8
 			else:
-				heal +=  oppo._stats[1] / mon._stats[1] / 8
+				heal +=  o_stats[6] / m_stats[6] / 8
 				if item == "bigroot" and v[27] > 0:
-					heal +=  0.3 * oppo._stats[1] / mon._stats[1] / 8
+					heal +=  0.3 * o_stats[6] / m_stats[6] / 8
 
 	if Effect.HEAL_BLOCK in effects:
 		heal = 0		
@@ -1505,12 +1512,12 @@ def modified_move_vector(
 		if v[27] < 0:
 			v[27] = 0
 	v[26] = heal - pdmg - selfattact + v[28] * ( 1 - v[4])
-	v[27] *= (v[1]+v[2]+v[53]) * oppo._stats[1] / mon._stats[1]
+	v[27] *= (v[1]+v[2]+v[53]) * o_stats[6] / m_stats[6]
 	v[26] += pokemon_vectorize(mon,weather,field,ability,item)[8]
 
 	if move._id == "painsplit": 
-		v[53] = (oppo._stats[0] - mon._stats[0]) / oppo._stats[1] / 2
-		v[27] = (oppo._stats[0] - mon._stats[0]) / mon._stats[1] / 2
+		v[53] = (o_stats[5] - m_stats[6] * m_stats[6]) / 2
+		v[27] = (o_stats[5] * o_stats[6] - m_stats[6]) / 2
 
 	if oppo_ability == "suctioncups":
 		v[39] = 0
@@ -1711,11 +1718,11 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		v[7] = 1
 	if mon._mon._status:
 		if ability == "guts":
-			v[17] *= 1.5 							#test this
+			v[1] *= 1.5 							#test this
 		if ability == "marvelscale":
-			v[18] *= 1.5
+			v[2] *= 1.5
 		if ability == "quickfeet":
-			v[21] *= 1.5			
+			v[5] *= 1.5			
 		_status = mon._mon._status.name
 		v[6] = 1
 		if _status == "BRN":
@@ -1725,21 +1732,21 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			else:
 				dpt += 1
 			if ability == "flareboost":
-				v[19] *= 1.5
+				v[3] *= 1.5
 		if _status == "FRZ":
 			v[9] = 4
 		if _status == "PAR":			
 			v[9] = 1/4
 			v[11] = 1
 			if ability != "quickfeet":
-				v[21] *= 0.5
+				v[5] *= 0.5
 		if _status == "PSN":
 			if ability == "poisonheal":
 				hpt += 2
 			else:
 				dpt = 2
 			if ability == "toxicboost":
-				v[17] *= 1.5			
+				v[1] *= 1.5			
 		if _status == "SLP":
 			v[9] = 3 - mon._mon._status_counter
 		if _status == "TOX":
@@ -1748,26 +1755,26 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			else:
 				dpt += ( 1 + mon._mon._status_counter )
 			if ability == "toxicboost":
-				v[17] *= 1.5
+				v[1] *= 1.5
 
 	if item in ("leftover","blacksludge"):
 		hpt += 1	
 	if item == "stickybarb":
 		dpt += 2	
 	if item == "choiceband" or ability == "gorillatactics":
-		v[17] *= 1.5
+		v[1] *= 1.5
 		v[12] = 10
 	if item == "choicespecs":
-		v[19] *= 1.5
+		v[3] *= 1.5
 		v[12] = 10
 	if item == "choicescarf":
-		v[21] *= 1.5
+		v[5] *= 1.5
 		v[12] = 10
 	if item == "assaultvest":
-		v[20] *= 1.5
+		v[4] *= 1.5
 	if item == "eviolite":
-		v[18] *= 1.5
-		v[20] *= 1.5
+		v[2] *= 1.5
+		v[4] *= 1.5
 	if item == "focussash" or ability == "sturdy":
 		v[13] = 1
 	if mon._mon._species in ("mimikyu","eiscue") and ability in ("disguise","iceface"): #test it
@@ -1786,6 +1793,64 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 					dpt += 1
 			if ability == "icebody":
 				hpt += 1
+
+	if Weather.SUNNYDAY in weather:
+		if ability == "chlorophyll":
+			v[5] *= 2
+		if ability == "dryskin":
+			dpt += 2
+		if ability == "solarpower":
+			v[3] *= 1.5
+			dpt += 2
+		if ability == "flowergift":
+			v[1] *= 1.5
+			v[4] *= 1.5
+	if Weather.RAINDANCE in weather:
+		if ability == "swiftswim":
+			v[5] *= 2
+		if ability == "raindish":
+			hpt += 1
+		if ability == "dryskin":
+			hpt += 2
+	if Weather.SANDSTORM in weather:
+		if ability == "sandrush":
+			v[5] *= 2
+		if PokemonType.ROCK in types:
+			v[20] *= 1.5
+	if Weather.HAIL in weather:
+		if ability == "slushrush":
+			v[5] *= 2
+	if Field.GRASSY_TERRAIN in field:
+		hpt += 1
+		if ability == "grasspelt":
+			v[2] *= 1.5
+	if Field.ELECTRIC_TERRAIN in field:
+		if ability == "surgesurfer":
+			v[5] *= 2
+	if ability in ("hugepower","purepower"):
+		v[1] *= 2
+	if ability == "hustle":
+		v[1] *= 1.5
+	if ability == "unburden" and item == "lost":
+		v[5] *= 2
+	if ability == "slowstart":
+		v[1] *= 0.5
+		v[5] *= 0.5
+	if ability == "defeatist" and v[0] < 0.5 :
+		v[1] *= 0.5
+		v[3] *= 0.5
+	if item == "ironball":
+		v[5] *= 0.5
+
+
+	if item == "thickclub" and mon._mon._species in ("cubone","marowak","marowakalola"):
+		v[1] *= 2
+	if item == "lightball" and mon._mon._species == "pikachu":
+		v[1] *= 2
+		v[3] *= 2
+	if item == "deepseatooth" and mon._mon._species == "clamperl":
+		v[3] *= 2
+
 
 
 	effects = mon._mon._effects 
@@ -1864,72 +1929,16 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		for i in range(0,5):
 			v[17+i] = v[1+i]*boosts_to_multi(boosts[i])
 
-
-	if Weather.SUNNYDAY in weather:
-		if ability == "chlorophyll":
-			v[21] *= 2
-		if ability == "dryskin":
-			dpt += 2
-		if ability == "solarpower":
-			v[19] *= 1.5
-			dpt += 2
-		if ability == "flowergift":
-			v[17] *= 1.5
-			v[20] *= 1.5
-	if Weather.RAINDANCE in weather:
-		if ability == "swiftswim":
-			v[21] *= 2
-		if ability == "raindish":
-			hpt += 1
-		if ability == "dryskin":
-			hpt += 2
-	if Weather.SANDSTORM in weather:
-		if ability == "sandrush":
-			v[21] *= 2
-		if PokemonType.ROCK in types:
-			v[20] *= 1.5
-	if Weather.HAIL in weather:
-		if ability == "slushrush":
-			v[21] *= 2
-	if Field.GRASSY_TERRAIN in field:
-		hpt += 1
-		if ability == "grasspelt":
-			v[18] *= 1.5
-	if Field.ELECTRIC_TERRAIN in field:
-		if ability == "surgesurfer":
-			v[21] *= 2
-	if ability in ("hugepower","purepower"):
-		v[17] *= 2
-	if ability == "hustle":
-		v[17] *= 1.5
-	if ability == "unburden" and item == "lost":
-		v[21] *= 2
-	if ability == "slowstart":
-		v[17] *= 0.5
-		v[21] *= 0.5
-	if ability == "defeatist" and v[0] < 0.5 :
-		v[17] *= 0.5
-		v[19] *= 0.5
-	if item == "ironball":
-		v[21] *= 0.5
-
+	if Effect.HEAL_BLOCK not in effects:
+		v[8] += hpt / 16
+	if ability != "magicguard":
+		v[8] -= dpt / 16
 	if item in ("laggingtail","fullincense") or ability == "stall":
 		if Field.TRICK_ROOM in field:
 			v[21] = 2000
 		else:
 			v[21] = 1
-	if item == "thickclub" and mon._mon._species in ("cubone","marowak","marowakalola"):
-		v[17] *= 2
-	if item == "lightball" and mon._mon._species == "pikachu":
-		v[17] *= 2
-		v[19] *= 2
-	if item == "deepseatooth" and mon._mon._species == "clamperl":
-		v[19] *= 2
 
-	if Effect.HEAL_BLOCK not in effects:
-		v[8] += hpt / 16
-	if ability != "magicguard":
-		v[8] -= dpt / 16
 
 
 	v[24] = mon._mon._protect_counter
@@ -2137,8 +2146,10 @@ def move_vectorize(move:Move):
 		v[31] = 1
 	if "sound" in move.entry["flags"]:
 		v[32] = 1
-	if "powder" in move.entry["flags"]:						#slot empty
+	if "powder" in move.entry["flags"]:						
 		v[33] = 1		
+	if move._id == "pursuit":
+		v[34] = 1
 	if "charge" in move.entry["flags"]:
 		v[35] = 1
 		if "condition" in move.entry:
@@ -2494,139 +2505,134 @@ def vectordebug(v):
 		if v[i] != 0:
 			print("v[%d]="%i,v[i])
 
-def threating_rate(mon,oppo,weather,field,side,oppo_side):
-	def priority(move,d):
-		if d:
-			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
-		else:
-			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
-		return v[0]
-	def prioried_damage(move,d):
-		if d:
-			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
-		else:
-			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
-		if v[1] + v[2] +v[53]:
-			return v[1] + v[2] +v[53] +v[0]*10
-		else:
-			return 0
-	def damage(move,d):
-		if d:
-			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
-		else:
-			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
-		return v[1] + v[2] +v[53]
-	def heal(move,d):
-		if d:
-			v = modified_move_vector(Move(move),mon,oppo,weather,field,side,oppo_side)
-		else:
-			v = modified_move_vector(Move(move),oppo,mon,weather,field,oppo_side,side)
-		return v[26] + v[27]
-	most_threating_quick_move = max(mon._mon.moves, key=lambda move: prioried_damage(move,1))
-	most_threating_move = max(mon._mon.moves, key=lambda move: damage(move,1))
-	heal_move = max(mon._mon.moves, key=lambda move: heal(move,1))
-	oppo_most_threating_quick_move = max(oppo._mon.moves, key=lambda move: prioried_damage(move,0))
-	oppo_most_threating_move = max(oppo._mon.moves, key=lambda move: damage(move,0))
-	oppo_heal_move = max(oppo._mon.moves, key=lambda move: heal(move,0))
-	mt = [priority(most_threating_move,1),damage(most_threating_move,1),heal(most_threating_move,1)]
-	mq = [priority(most_threating_quick_move,1),damage(most_threating_quick_move,1),heal(most_threating_quick_move,1)]
-	mh = [priority(heal_move,1),damage(heal_move,1),heal(heal_move,1)]
-	ot = [priority(oppo_most_threating_move,0),damage(oppo_most_threating_move,0),heal(oppo_most_threating_move,0)]
-	oq = [priority(oppo_most_threating_quick_move,0),damage(oppo_most_threating_quick_move,0),heal(oppo_most_threating_quick_move,0)]
-	oh = [priority(oppo_heal_move,0),damage(oppo_heal_move,0),heal(oppo_heal_move,0)]
-	remain_hp = mon._stats[0] / mon._stats[1]
-	oppo_remain_hp = oppo._stats[0] / oppo._stats[1]
-
-	
-	if oh[2] > mt[1]:
-		if oppo_remain_hp > mq[1] or oh[0] > mq[0]:
-			if oppo_remain_hp > mt[1] or oh[0] > mt[0]:
-				if mh[2] > ot[1]:
-					if remain_hp > oq[1] or mh[0] > oq[0]:
-						if remain_hp > ot[1] or mh[0] > ot[0]:
-							return min(10,max(0.1,(mt[1]+0.001)/(ot[1]+0.001)))
-				else:
-					return max(0.1,min(10,(mt[1]+0.001)))
-	else:
-		if mh[2] > ot[1]:
-			if remain_hp > oq[1] or mh[0] > oq[0]:
-				if remain_hp > ot[1] or mh[0] > ot[0]:
-					return max(0.1,min(10,(1/(ot[1]+0.001))))
 
 
 
 
-	konumber = int(oppo_remain_hp/(mt[1]-ot[2]+0.001))
-	oppo_konumber = int(remain_hp/(ot[1]-mt[2]+0.001))
-	number = min(konumber,oppo_konumber)
-	
-	remain_hp -= (ot[1]-mt[2]) * number
-	oppo_remain_hp -= (mt[1]-ot[2]) * number
-#	print(konumber,oppo_konumber,mt,ot)
-	if mq[0] >= oq[0] and mq[1] > oppo_remain_hp:
-		oppo_remain_hp = 0
-	if oq[0] >= mq[0] and oq[1] > remain_hp:
-		remain_hp = 0
-	if remain_hp and oppo_remain_hp:
-		if mt[0] > ot[0]:
-			if mt[1] > oppo_remain_hp:
-				oppo_remain_hp = 0
-				if oq[0] > mt[0]:
-					remain_hp -= oq[1]
-			else:
-				remain_hp = 0
-				oppo_remain_hp -= mt[1]	
-
-		if mt[0] < ot[0]:
-			if ot[1] > remain_hp:
-				remain_hp = 0
-				if mq[0] > ot[0]:
-					oppo_remain_hp -= mq[1]	
-			else:
-				oppo_remain_hp = 0
-				remain_hp -= ot[1]
-
-		if mt[0] == ot[0]:
-			if mt[1] > oppo_remain_hp:
-				oppo_remain_hp = 0
-				if oq[0] > mt[0]:
-					remain_hp -= oq[1]
-			if ot[1] > remain_hp:
-				remain_hp = 0
-				if mq[0] > ot[0]:
-					oppo_remain_hp -= mq[1]	
-
-
-#	print(remain_hp,oppo_remain_hp)
-	if remain_hp == 0 and oppo_remain_hp == 0:
-		return 1
-	if remain_hp == 0:
-		return max(0.1,min(10,(1-oppo_remain_hp)))
-	if oppo_remain_hp == 0:
-		return max(0.1,min(10,1/(1.001-remain_hp)))
-
-
-	return 1
-
-
-
-def threating_rate_matrix(battle,battle2):
+def vector_dict(battle,battle2):
+	vector_dict = {}
 	alive_mon = []
 	alive_oppo = []
 	for _mon in battle._team: 
 		if not battle._team[_mon].fainted:
-			alive_mon.append(PokemonSet(battle._team[_mon]))
+			alive_mon.append(_mon)
 	for _oppo in battle2._team:
 		if not battle2._team[_oppo].fainted:
-			alive_oppo.append(PokemonSet(battle2._team[_oppo]))
+			alive_oppo.append(_oppo)
 	m = np.zeros((len(alive_mon),len(alive_oppo)))
-	for i in range(len(alive_mon)):
-		for j in range(len(alive_oppo)):
-			m[i][j] = threating_rate(alive_mon[i],alive_oppo[j],battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
+	for _mon in alive_mon:
+		mon = PokemonSet(battle._team[_mon])
+		vector_dict[_mon] = {}
+		for _oppo in alive_oppo:
+			oppo = PokemonSet(battle2._team[_oppo])
+			vector_dict[_mon][_oppo] = {}
+			for move in mon._mon.moves:
+				move_vector = modified_move_vector(Move(move),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
+				vector_dict[_mon][_oppo][move] = move_vector
+	return vector_dict
 
-	return m
+def threating_rate_dict(battle,battle2):
+	def priority(v):
+		return v[0]
+	def prioried_damage(v):
+		if v[1] + v[2] +v[53]:
+			return v[1] + v[2] +v[53] +v[0]*10
+		else:
+			return 0
+	def damage(v):
+		return v[1] + v[2] +v[53]
+	def heal(v):
+		return v[26] + v[27]
+	def simplify(v):
+		return [v[0],v[1] + v[2] +v[53],v[26] + v[27]]
+	def threating_rate(remain_hp,oppo_remain_hp,mq,mt,mh,oq,ot,oh):
+		if oh[2] > mt[1]:
+			if oppo_remain_hp > mq[1] or oh[0] > mq[0]:
+				if oppo_remain_hp > mt[1] or oh[0] > mt[0]:
+					if mh[2] > ot[1]:
+						if remain_hp > oq[1] or mh[0] > oq[0]:
+							if remain_hp > ot[1] or mh[0] > ot[0]:
+								return min(10,max(0.1,(mt[1]+0.001)/(ot[1]+0.001)))
+					else:
+						return max(0.1,min(10,(mt[1]+0.001)))
+		else:
+			if mh[2] > ot[1]:
+				if remain_hp > oq[1] or mh[0] > oq[0]:
+					if remain_hp > ot[1] or mh[0] > ot[0]:
+						return max(0.1,min(10,(1/(ot[1]+0.001))))
+		konumber = int(oppo_remain_hp/(mt[1]-ot[2]+0.001))
+		oppo_konumber = int(remain_hp/(ot[1]-mt[2]+0.001))
+		number = min(konumber,oppo_konumber)	
+		remain_hp -= (ot[1]-mt[2]) * number
+		oppo_remain_hp -= (mt[1]-ot[2]) * number
+		if mq[0] >= oq[0] and mq[1] > oppo_remain_hp:
+			oppo_remain_hp = 0
+		if oq[0] >= mq[0] and oq[1] > remain_hp:
+			remain_hp = 0
+		if remain_hp and oppo_remain_hp:
+			if mt[0] > ot[0]:
+				if mt[1] > oppo_remain_hp:
+					oppo_remain_hp = 0
+					if oq[0] > mt[0]:
+						remain_hp -= oq[1]
+				else:
+					remain_hp = 0
+					oppo_remain_hp -= mt[1]	
+			if mt[0] < ot[0]:
+				if ot[1] > remain_hp:
+					remain_hp = 0
+					if mq[0] > ot[0]:
+						oppo_remain_hp -= mq[1]	
+				else:
+					oppo_remain_hp = 0
+					remain_hp -= ot[1]
+			if mt[0] == ot[0]:
+				if mt[1] > oppo_remain_hp:
+					oppo_remain_hp = 0
+					if oq[0] > mt[0]:
+						remain_hp -= oq[1]
+				if ot[1] > remain_hp:
+					remain_hp = 0
+					if mq[0] > ot[0]:
+						oppo_remain_hp -= mq[1]	
+		if remain_hp == 0 and oppo_remain_hp == 0:
+			return 1
+		if remain_hp == 0:
+			return max(0.1,min(10,(1-oppo_remain_hp)))
+		if oppo_remain_hp == 0:
+			return max(0.1,min(10,1/(1.001-remain_hp)))
+		return 1
+
+	trm = {}
+	mon_vector_dict = vector_dict(battle,battle2)
+	oppo_vector_dict = vector_dict(battle2,battle)
+	for _mon in mon_vector_dict: 
+		trm[_mon] = {}
+		remain_hp = battle._team[_mon]._current_hp / battle._team[_mon]._max_hp
+		for _oppo in mon_vector_dict[_mon]:
+			oppo_remain_hp = battle2._team[_oppo]._current_hp / battle2._team[_oppo]._max_hp
+			moveset = mon_vector_dict[_mon][_oppo]
+			oppo_moveset = oppo_vector_dict[_oppo][_mon]
+			most_threating_quick_move = max(moveset, key=lambda move: prioried_damage(moveset[move]))
+			most_threating_move = max(moveset, key=lambda move: damage(moveset[move]))
+			heal_move = max(moveset, key=lambda move: heal(moveset[move]))
+			oppo_most_threating_quick_move = max(oppo_moveset, key=lambda move: prioried_damage(oppo_moveset[move]))
+			oppo_most_threating_move = max(oppo_moveset, key=lambda move: damage(oppo_moveset[move]))
+			oppo_heal_move = max(oppo_moveset, key=lambda move: heal(oppo_moveset[move]))
+
+			mq = simplify(moveset[most_threating_quick_move])
+			mt = simplify(moveset[most_threating_move])
+			mh = simplify(moveset[heal_move])
+			oq = simplify(oppo_moveset[oppo_most_threating_quick_move])
+			ot = simplify(oppo_moveset[oppo_most_threating_move])
+			oh = simplify(oppo_moveset[oppo_heal_move])
 
 
+			trm[_mon][_oppo] = threating_rate(remain_hp,oppo_remain_hp,mq,mt,mh,oq,ot,oh)
+			
+
+
+	return trm
 '''
 	#other special things when simulating : 
 	xx swap, magicmirror, etc 
