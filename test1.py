@@ -2,6 +2,7 @@
 import asyncio
 import orjson
 import numpy as np
+import time
 
 import sys
 from typing import Dict
@@ -17,6 +18,11 @@ from poke_env.environment.battle import Battle
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.status import Status
+from poke_env.environment.effect import Effect
+from poke_env.environment.field import Field
+from poke_env.environment.pokemon_type import PokemonType
+from poke_env.environment.side_condition import STACKABLE_CONDITIONS, SideCondition
+from poke_env.environment.weather import Weather
 from my_player import MyPlayer
 from my_random_player import RandomPlayer
 from amateur_player import AmateurPlayer
@@ -33,22 +39,25 @@ from pokemonset import PokemonSet
 
 
 scorelist = []
-traceback_factor = 0.8
-feinting_score = 100
-winning_score = 300
+vectorlist = []
+traceback_factor = 0.3
+fainting_score = 100
+winning_score = 500
+fd=open("test.txt","w")
 
 def my_won_by(self, player_name: str):
     global scorelist
+    global vectorlist
     battle2=list(player_2._battles.values())[-1]
     if player_name == self._player_username:
         self._won = True
         if self != battle2:
-            scorelist += [getscore(self,winning_score)]
+            scorelist += [getscore(self,battle2,winning_score)]
             print(scorelist[-1])
     else:
         self._won = False
         if self != battle2:
-            scorelist += [getscore(self,-winning_score)]
+            scorelist += [getscore(self,battle2,-winning_score)]
             print(scorelist[-1])
     if self != battle2:          
         print("tracebacked_score:",tracebacked_scorelist(scorelist))
@@ -123,13 +132,13 @@ Pokemon._update_from_request = my_update_from_request
 AbstractBattle._won_by = my_won_by
 
 team_2 = """
-Lapras @ Heavy-Duty Boots  
-Ability: Water Absorb  
-EVs: 252 Def / 252 SpD / 4 Spe  
+Chansey (F) @ Eviolite  
+Ability: Natural Cure  
+EVs: 252 HP / 252 SpD  
 IVs: 0 Atk  
-- Thunderbolt
+- Dazzling Gleam
 """
-'''
+
 player_2 = RandomPlayer(
     battle_format="gen8ubers", team=team_2, max_concurrent_battles=1
 )
@@ -138,21 +147,30 @@ player_2 = RandomPlayer(
 player_2 = AmateurPlayer(
     battle_format="gen8randombattle", max_concurrent_battles=1
 )
-
+'''
 
 
 class CheatingPlayer(MyPlayer):
 
 
     def choose_move(self, battle):
-        
-        global scorelist
-        #print all information
         battle2=list(player_2._battles.values())[-1]
+        if isinstance(battle2.active_pokemon,type(None)):
+            battle._finish_battle()
 
-        scorelist += [getscore(battle,0)]
+        start_time = time.time()    
+        print("turn:",battle._turn)    
+        global scorelist
+        global vectorlist
+        #print all information
 
-        print("turn:",battle._turn, "score:", getscore(battle,0))       
+        score = getscore(battle,battle2,0)
+#        trm = vc.threating_rate_matrix(battle,battle2)
+#        score += fainting_score * sum(sum(np.log10(trm)))
+        
+        scorelist += [score]
+
+ #       print("score:", score)   
  #       print("player:")
  #       self.show_down(battle)
  #       print("opponent:")
@@ -161,14 +179,16 @@ class CheatingPlayer(MyPlayer):
  #       print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
         
         #self.show_opponent(battle)
-        if battle2.active_pokemon is not None:
-            if battle.available_moves:
-                best_move = movechooser(battle,battle2)
-            else:
-                if battle.available_switches:
-                    best_move = switchchooser(battle,battle2)
-#            print(best_move)
-            return self.create_order(best_move)
+
+ #       print(battle.active_pokemon._species,battle2.active_pokemon._species)
+        if battle.available_moves:
+            best_move = movechooser(battle,battle2)
+        else:
+            if battle.available_switches:
+                best_move = switchchooser(battle,battle2)
+
+ #       print("running time:",time.time()-start_time)
+        return self.create_order(best_move)
 
         
 
@@ -185,9 +205,9 @@ def movechooser(battle,battle2):
         weight[i] = simply_modified_weight(battle.available_moves[i],battle.active_pokemon,battle2.active_pokemon,battle,battle2)
 #        print(battle.available_moves[i]._id,weight[i])
 
+
     oppo_most_threating_move = max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.active_pokemon,battle2,battle))
     threating_rate = simply_modified_weight(Move(oppo_most_threating_move),battle2.active_pokemon,battle.active_pokemon,battle2,battle)
-#    print("oppo_most_threating_move",oppo_most_threating_move,threating_rate)
     for i in range(0,b):
         weight[a+i] = threating_rate
         oppo_most_threating_move_2 = max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.available_switches[i],battle2,battle))
@@ -197,17 +217,15 @@ def movechooser(battle,battle2):
         for _move in battle.available_switches[i]._moves:
             most_threating_move = max(battle.available_switches[i]._moves, key=lambda move: simply_modified_weight(Move(move),battle.available_switches[i],battle2.active_pokemon,battle,battle2))
         weight[a+i] *= simply_modified_weight(Move(most_threating_move),battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
-#        print(battle.available_switches[i]._species,weight[a+i])
-    for j in range(0,min(a+b,6)):
+        weight[a+i] *= 0
+    for j in range(0,min(a+b,5)):
         k = list(weight).index(max(weight))
         choise_weight += [weight.pop(k)]
         choise += [available.pop(k)]
     _move = np.random.choice(choise, 1 , p = choise_weight/sum(choise_weight))[0]
-#    print("move:",_move)
     return _move
 
 def switchchooser(battle,battle2):
-#    print("switchchooser calculating...")
     a = len(battle.available_switches)
     threating_rate=[1 for i in range(0,a)]
     available = [] + battle.available_switches
@@ -219,11 +237,10 @@ def switchchooser(battle,battle2):
         threating_rate[i] *= simply_modified_weight(Switch(),battle.available_switches[i],battle2.active_pokemon,battle,battle2)
         most_threating_move = Move(max(battle.available_switches[i]._moves, key=lambda move: simply_modified_weight(Move(move),battle.available_switches[i],battle2.active_pokemon,battle,battle2)))
         threating_rate[i] *= simply_modified_weight(most_threating_move,battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
-#        print(battle.available_switches[i]._species,threating_rate[i])
+ #       print(battle.available_switches[i]._species,threating_rate[i])
 
     for j in range(0,min(a,3)):
         k = list(threating_rate).index(max(threating_rate))
-#        print(threating_rate[k])
         choise_weight += [threating_rate.pop(k)]
         choise += [available.pop(k)]
     _switch = np.random.choice(choise, 1 , p = choise_weight/sum(choise_weight))[0]  
@@ -242,8 +259,8 @@ def simply_modified_weight(move,mon,oppo,battle,battle2):
     w[13:20] = np.ones(7)*-0.1*(oppo._current_hp/oppo._max_hp+1)
     w[20:25] =  np.ones(5)*0.2
     w[25] = np.arctan(v[0])
-    w[26] = 0.2*(1-mon._current_hp/mon._max_hp)
-    w[27] = 0.2*(v[1]+v[2])*(1-mon._current_hp/mon._max_hp)
+    w[26] = 0.2*(1.2-mon._current_hp/mon._max_hp)
+    w[27] = 0.2*(1.2-mon._current_hp/mon._max_hp)
     w[28] = (1-v[4])*0.5
     w[35] = -0.5*(v[1]+v[2])
     w[36] = 0.1*(v[1]+v[2])
@@ -289,22 +306,48 @@ def simply_modified_weight(move,mon,oppo,battle,battle2):
     return weight
 
 
-def getscore(battle,winning_score):
+
+def getscore(battle,battle2,winning_score):
     s = 0
     for _oppo in battle._opponent_team:
         oppo = battle._opponent_team[_oppo]
-        if oppo._status and oppo._status.name == "FNT":
-            s += 2 * feinting_score
+        if oppo.fainted:
+            s += 2 * fainting_score
         else:
-            s += ( 1 - oppo._current_hp/oppo._max_hp ) * feinting_score
+            s += ( 1 - oppo._current_hp/oppo._max_hp ) * fainting_score
     for _mon in battle._team:
         mon = battle._team[_mon]
-        if mon._status and mon._status.name == "FNT":
-            s -= 2 * feinting_score
+        if mon.fainted:
+            s -= 2 * fainting_score
         else:
-            s -= ( 1 - mon._current_hp/mon._max_hp ) * feinting_score
-    # +threating rate
+            s -= ( 1 - mon._current_hp/mon._max_hp ) * fainting_score
+    side = battle._side_conditions
+    oppo_side = battle._opponent_side_conditions
+    if SideCondition.SPIKES in side:
+        s -= side[SideCondition.SPIKES] * 30
+    if SideCondition.STEALTH_ROCK in side:
+        s -= 50   
+    if SideCondition.STICKY_WEB in side:
+        if Field.TRICK_ROOM in battle._fields:
+            s += 40 
+        else:
+            s -= 40
+    if SideCondition.TOXIC_SPIKES in side:
+        s -= side[SideCondition.TOXIC_SPIKES] * 30
+
+    if SideCondition.SPIKES in oppo_side:
+        s += oppo_side[SideCondition.SPIKES] * 30
+    if SideCondition.STEALTH_ROCK in oppo_side:
+        s += 50   
+    if SideCondition.STICKY_WEB in oppo_side:
+        if Field.TRICK_ROOM in battle._fields:
+            s -= 40 
+        else:
+            s += 40
+    if SideCondition.TOXIC_SPIKES in oppo_side:
+        s += oppo_side[SideCondition.TOXIC_SPIKES] * 30
     s += winning_score
+
     return s
 
 def tracebacked_scorelist(score:list):
@@ -321,38 +364,41 @@ def tracebacked_scorelist(score:list):
 
 async def main():
     team_1 = """
+Slowbro  
+Ability: Oblivious  
+EVs: 252 HP  
+IVs: 0 Atk  
+- Teleport
+
 Rotom-Wash  
 Ability: Levitate  
-EVs: 252 SpD  
+EVs: 252 HP  
 IVs: 0 Atk  
 - Volt Switch
 
-Slowbro  
-Ability: Oblivious  
-EVs: 252 SpA  
-IVs: 0 Atk  
-- Teleport
+Corviknight @ Iron Ball  
+Ability: Pressure  
+EVs: 252 HP  
+IVs: 0 Spe  
+- U-turn
 
-Kadabra  
-Ability: Synchronize  
-EVs: 252 Def  
-IVs: 0 Atk  
-- Teleport
 """
-    fd=open("test.txt","w")
-    sys.stdout=fd
+    debug=open("debug.txt","w")
+    sys.stdout=debug
+    
 
-    max_damage_player_1 = CheatingPlayer(
-        battle_format="gen8randombattle", max_concurrent_battles=1
+    cheating_player_1 = CheatingPlayer(
+        battle_format="gen8ubers", team=team_1, max_concurrent_battles=1
     )
 
     n_battles = 1
-    await max_damage_player_1.battle_against(player_2, n_battles)
+    await cheating_player_1.battle_against(player_2, n_battles)
 
     print(
         "CheatingPlayer won %d / %d battles"
-        % (max_damage_player_1.n_won_battles, n_battles)
+        % (cheating_player_1.n_won_battles, n_battles)
     )
+    debug.close()
     fd.close()
 
 

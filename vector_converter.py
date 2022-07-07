@@ -124,14 +124,14 @@ def modified_move_vector(
 	if _counts_ability is True and mon._mon._ability:
 		ability = mon._mon._ability		
 	else:
-		if _counts_ability is str:							
+		if isinstance(_counts_ability,str):							
 			ability = _counts_ability
 		else:
 			ability = ""
 	if _counts_oppo_ability is True and oppo._mon._ability:
 		oppo_ability = oppo._mon._ability
 	else:
-		if _counts_oppo_ability is str:
+		if isinstance(_counts_oppo_ability,str):
 			oppo_ability = _counts_oppo_ability
 		else:
 			oppo_ability = ""
@@ -152,14 +152,14 @@ def modified_move_vector(
 	if _counts_item is True and mon._mon._item:
 		item = mon._mon._item		
 	else:
-		if _counts_item is str:
+		if isinstance(_counts_item,str): 
 			item = _counts_item
 		else:
 			item = ""
 	if _counts_oppo_item is True and oppo._mon._item:
 		oppo_item = oppo._mon._item
 	else:
-		if _counts_oppo_item is str:
+		if isinstance(_counts_oppo_item,str): 
 			oppo_item = _counts_oppo_item
 		else:
 			oppo_item = ""
@@ -266,6 +266,8 @@ def modified_move_vector(
 	m_stats = pokemon_vectorize(mon,weather,field,ability,item)[17:22]
 	o_stats = np.zeros(5)
 	o_stats = pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[17:22]
+
+
 	boosts = list(mon._mon._boosts.values())
 	acc = boosts.pop(0)
 	eva = boosts.pop(2)
@@ -315,9 +317,12 @@ def modified_move_vector(
 		v[0] = 7 + speed_ratio
 		if ability == "intimidate":
 			if oppo_ability not in ("scrappy","owntempo","innerfocus","oblivious",):
-				v[13] = -1
+				v[13] -= 1
 				if oppo_ability == "rattled":
-					v[17] = 2
+					v[17] += 1
+				if oppo_item == "adrenalineorb":
+					v[17] += 1
+					v[99] = 1		
 		if ability == "shadowtag" and oppo_ability != "shadowtag":	
 			v[42] = 2
 		if ability == "magnetpull" and PokemonType.STEEL in oppo_types:
@@ -802,6 +807,8 @@ def modified_move_vector(
 							damage_multiplier *= movetype.damage_multiplier(_type)
 			if v[1] or v[2] or v[53] or move._id == "thunderwave":
 				if damage_multiplier == 0:
+					if v[28]:
+						pdmg += 1/2
 					v = v * vclear 
 			
 			if move._id == "flyingpress":
@@ -1151,6 +1158,7 @@ def modified_move_vector(
 			v[13:20] *= 0
 			v[56:63] *= -1
 			v[68:70] *= -1
+			v[72:76] *= -1
 	if oppo_ability == "steadfast":
 		v[17] += v[55]
 
@@ -1560,7 +1568,7 @@ def modified_move_vector(
 		v[75] *= 0.1
 	if SideCondition.TAILWIND in side:
 		v[76] = 0
-	if Field.TRICK_ROOM in side:
+	if Field.TRICK_ROOM in _field:
 		v[77] *= -1
 		v[76] *= -1
 	if Field.GRAVITY in _field:
@@ -1673,16 +1681,16 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 	if _counts_ability is True and mon._mon._ability:
 		ability = mon._mon._ability		
 	else:
-		if _counts_ability is str:
+		if isinstance(_counts_ability,str):
 			ability = _counts_ability
 		else:
 			ability = ""
 
-
+	
 	if _counts_item is True and mon._mon._item:
 		item = mon._mon._item		
 	else:
-		if _counts_item is str:
+		if isinstance(_counts_item,str): 
 			item = _counts_item
 		else:
 			item = ""
@@ -1712,7 +1720,10 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		v[6] = 1
 		if _status == "BRN":
 			v[10] = 1
-			dpt += 1
+			if ability == "heatproof":
+				dpt += 1/2
+			else:
+				dpt += 1
 			if ability == "flareboost":
 				v[19] *= 1.5
 		if _status == "FRZ":
@@ -2073,7 +2084,7 @@ def move_vectorize(move:Move):
 	if _status == "slp":
 		v[24] = _chance
 	if _status == "tox":
-		v[23] = 2 * _chance
+		v[23] = 4 * _chance
 	
 
 	if move._id == "triattack":								#these things are not correct but nvm
@@ -2535,59 +2546,85 @@ def threating_rate(mon,oppo,weather,field,side,oppo_side):
 						if remain_hp > ot[1] or mh[0] > ot[0]:
 							return min(10,max(0.1,(mt[1]+0.001)/(ot[1]+0.001)))
 				else:
-					return max(0.1,(mt[1]+0.001))
+					return max(0.1,min(10,(mt[1]+0.001)))
 	else:
 		if mh[2] > ot[1]:
 			if remain_hp > oq[1] or mh[0] > oq[0]:
 				if remain_hp > ot[1] or mh[0] > ot[0]:
-					return min(10,(1/(ot[1]+0.001)))
+					return max(0.1,min(10,(1/(ot[1]+0.001))))
 
 
 
-	if mt[0] > ot[0]:
-		konumber = int((oppo_remain_hp-mq[1]-min(ot[2],0))/(mt[1]-ot[2]))
-		oppo_konumber = int(min(1,remain_hp-oq[1]+mt[2])/(ot[1]-mt[2]))
-	else:
-		if mt[0] < ot[0]:
-			konumber = int(min(1,oppo_remain_hp-mq[1]+ot[2])/(mt[1]-ot[2]))
-			oppo_konumber = int((remain_hp-oq[1]-min(mt[2],0))/(ot[1]-mt[2]))
-		else:
-			konumber = int((oppo_remain_hp-mq[1])/(mt[1]-ot[2]))
-			oppo_konumber = int((remain_hp-oq[1])/(ot[1]-mt[2]))
+
+	konumber = int(oppo_remain_hp/(mt[1]-ot[2]+0.001))
+	oppo_konumber = int(remain_hp/(ot[1]-mt[2]+0.001))
+	number = min(konumber,oppo_konumber)
 	
-	remain_hp -= (ot[1]-mt[2]) * min(konumber,oppo_konumber)
-	oppo_remain_hp -= (mt[1]-ot[2]) * min(konumber,oppo_konumber)
-
-	if remain_hp > oq[1]:
+	remain_hp -= (ot[1]-mt[2]) * number
+	oppo_remain_hp -= (mt[1]-ot[2]) * number
+#	print(konumber,oppo_konumber,mt,ot)
+	if mq[0] >= oq[0] and mq[1] > oppo_remain_hp:
 		oppo_remain_hp = 0
-		if mq[0] < oq[0]:
-			remain_hp -= oq[1]
-		if mq[0] == oq[0]:
-			remain_hp -= oq[1]/2
-	else:
-		if oppo_remain_hp > mq[1]:
-			remain_hp = 0
-			if mq[0] > oq[0]:
-				oppo_remain_hp -= mq[1]
-			if mq[0] == oq[0]:
-				oppo_remain_hp -= mq[1]/2
-		else:
-			if mq[0] < oq[0]:
-				remain_hp = 0
-			if mq[0] > oq[0]:
+	if oq[0] >= mq[0] and oq[1] > remain_hp:
+		remain_hp = 0
+	if remain_hp and oppo_remain_hp:
+		if mt[0] > ot[0]:
+			if mt[1] > oppo_remain_hp:
 				oppo_remain_hp = 0
+				if oq[0] > mt[0]:
+					remain_hp -= oq[1]
+			else:
+				remain_hp = 0
+				oppo_remain_hp -= mt[1]	
 
+		if mt[0] < ot[0]:
+			if ot[1] > remain_hp:
+				remain_hp = 0
+				if mq[0] > ot[0]:
+					oppo_remain_hp -= mq[1]	
+			else:
+				oppo_remain_hp = 0
+				remain_hp -= ot[1]
+
+		if mt[0] == ot[0]:
+			if mt[1] > oppo_remain_hp:
+				oppo_remain_hp = 0
+				if oq[0] > mt[0]:
+					remain_hp -= oq[1]
+			if ot[1] > remain_hp:
+				remain_hp = 0
+				if mq[0] > ot[0]:
+					oppo_remain_hp -= mq[1]	
+
+
+#	print(remain_hp,oppo_remain_hp)
+	if remain_hp == 0 and oppo_remain_hp == 0:
+		return 1
 	if remain_hp == 0:
-		return max(0.1,1-oppo_remain_hp)
+		return max(0.1,min(10,(1-oppo_remain_hp)))
 	if oppo_remain_hp == 0:
-		return min(10,1/(1.001-remain_hp))
+		return max(0.1,min(10,1/(1.001-remain_hp)))
 
 
 	return 1
 
 
 
+def threating_rate_matrix(battle,battle2):
+	alive_mon = []
+	alive_oppo = []
+	for _mon in battle._team: 
+		if not battle._team[_mon].fainted:
+			alive_mon.append(PokemonSet(battle._team[_mon]))
+	for _oppo in battle2._team:
+		if not battle2._team[_oppo].fainted:
+			alive_oppo.append(PokemonSet(battle2._team[_oppo]))
+	m = np.zeros((len(alive_mon),len(alive_oppo)))
+	for i in range(len(alive_mon)):
+		for j in range(len(alive_oppo)):
+			m[i][j] = threating_rate(alive_mon[i],alive_oppo[j],battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
 
+	return m
 
 
 '''

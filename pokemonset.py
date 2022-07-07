@@ -17,27 +17,29 @@ class PokemonSet:
 	__slots__ = (
 		"_mon",
 		"_stats",
-		"_atk_clues",
-		"_def_clues",
-		"_spa_clues",
-		"_spd_clues",
+		"_atk_range",
+		"_def_range",
+		"_spa_range",
+		"_spd_range",
 		"_hp_clues",
 		"_speed_range",
 		"_current_pp",
-		"_already_moved"
+		"_already_moved",
+		"_last_move"
 		)
 
 	def __init__(self, _mon:Pokemon):
 		self._mon = _mon
 		self._stats = [0,0,0,0,0,0,0]
-		self._atk_clues: List(float)
-		self._def_clues: List(float)
-		self._spa_clues: List(float)
-		self._spd_clues: List(float)
+		self._atk_clues: [1,999]
+		self._def_hp_clues: [1,999999]
+		self._spa_clues: [1,999]
+		self._spd_hp_clues: [1,999999]
 		self._hp_clues: List(float)
-		self._speed_range = [1,999]
+		self._speed_range = [1,1000]
 		self._current_pp: Dict[Move, int]
 		self._already_moved = False
+		self._last_move = ""
 
 		if _mon._last_request:
 			self._stats[0] = _mon._current_hp

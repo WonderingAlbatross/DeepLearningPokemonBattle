@@ -48,6 +48,7 @@ from pokemonset import PokemonSet
 class MyPlayer(Player):
     __slots__ = (                                       #add forceswitchrequest
         "forceswitchrequest",
+        "oppohaveactioned"                                       #todo: change to dict : battle to bool
     )
     def __init__(
         self,
@@ -99,6 +100,7 @@ class MyPlayer(Player):
 
         self.logger.debug("Player initialisation finished")
         self.forceswitchrequest = 0
+        self.oppohaveactioned = False
 
 
     async def _handle_battle_message(self, split_messages: List[List[str]]) -> None:
@@ -108,7 +110,7 @@ class MyPlayer(Player):
                 # todo: add outrage/... as encore effect
 
 
-        #print(split_messages,"\n")
+        print(split_messages,"\n")
 
         if (
             len(split_messages) > 1
@@ -209,6 +211,7 @@ class MyPlayer(Player):
                 else:
                     self.logger.critical("Unexpected error message: %s", split_message)
             elif split_message[1] == "turn":
+                self.oppohaveactioned = False                                                         #oppohaveactioned
                 battle._parse_message(split_message)
                 await self._handle_battle_request(battle)
             elif split_message[1] == "teampreview":
@@ -235,10 +238,13 @@ class MyPlayer(Player):
         if self.forceswitchrequest == 2:
             battle._parse_message(split_message)
             self.forceswitchrequest = 0
-            if battle.move_on_next_request:            
+            if battle.move_on_next_request:    
+                print("oppohaveactioned",self.oppohaveactioned)      
                 await self._handle_battle_request(battle)
                 battle.move_on_next_request = False                
             return 0
+        if split_message[1] == "move" and split_message[2].startswith("p2"):
+            self.oppohaveactioned = True
         battle._parse_message(split_message)
 
     async def _handle_battle_request(
