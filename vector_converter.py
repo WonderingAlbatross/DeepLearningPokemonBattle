@@ -1851,7 +1851,11 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 	if item == "deepseatooth" and mon._mon._species == "clamperl":
 		v[3] *= 2
 
-
+	if item in ("laggingtail","fullincense") or ability == "stall":
+		if Field.TRICK_ROOM in field:
+			v[5] = 2000
+		else:
+			v[5] = 1
 
 	effects = mon._mon._effects 
 	if mon._mon.active:
@@ -1926,18 +1930,16 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 		boosts = list(mon._mon._boosts.values())
 		v[22] = boosts.pop(0)		#acc
 		v[23] = boosts.pop(2)		#eva
-		for i in range(0,5):
+		for i in range(0,4):
 			v[17+i] = v[1+i]*boosts_to_multi(boosts[i])
+		if item not in ("laggingtail","fullincense") and ability != "stall":
+			v[21] = v[5]
 
 	if Effect.HEAL_BLOCK not in effects:
 		v[8] += hpt / 16
 	if ability != "magicguard":
 		v[8] -= dpt / 16
-	if item in ("laggingtail","fullincense") or ability == "stall":
-		if Field.TRICK_ROOM in field:
-			v[21] = 2000
-		else:
-			v[21] = 1
+
 
 
 
@@ -2509,16 +2511,9 @@ def vectordebug(v):
 
 
 
-def vector_dict(battle,battle2):
+def vector_dict(battle,battle2,alive_mon,alive_oppo):
 	vector_dict = {}
-	alive_mon = []
-	alive_oppo = []
-	for _mon in battle._team: 
-		if not battle._team[_mon].fainted:
-			alive_mon.append(_mon)
-	for _oppo in battle2._team:
-		if not battle2._team[_oppo].fainted:
-			alive_oppo.append(_oppo)
+
 	m = np.zeros((len(alive_mon),len(alive_oppo)))
 	for _mon in alive_mon:
 		mon = PokemonSet(battle._team[_mon])
@@ -2531,7 +2526,7 @@ def vector_dict(battle,battle2):
 				vector_dict[_mon][_oppo][move] = move_vector
 	return vector_dict
 
-def threating_rate_dict(battle,battle2):
+def threating_rate_dict(mon_vector_dict,oppo_vector_dict,alive_mon,alive_oppo):
 	def priority(v):
 		return v[0]
 	def prioried_damage(v):
@@ -2552,14 +2547,14 @@ def threating_rate_dict(battle,battle2):
 					if mh[2] > ot[1]:
 						if remain_hp > oq[1] or mh[0] > oq[0]:
 							if remain_hp > ot[1] or mh[0] > ot[0]:
-								return min(10,max(0.1,(mt[1]+0.001)/(ot[1]+0.001)))
+								return max(0.2,min(5,(mt[1]+0.001)/(ot[1]+0.001)))
 					else:
-						return max(0.1,min(10,(mt[1]+0.001)))
+						return max(0.2,min(5,(mt[1]+0.001)))
 		else:
 			if mh[2] > ot[1]:
 				if remain_hp > oq[1] or mh[0] > oq[0]:
 					if remain_hp > ot[1] or mh[0] > ot[0]:
-						return max(0.1,min(10,(1/(ot[1]+0.001))))
+						return max(0.2,min(5,(1/(ot[1]+0.001))))
 		konumber = int(oppo_remain_hp/(mt[1]-ot[2]+0.001))
 		oppo_konumber = int(remain_hp/(ot[1]-mt[2]+0.001))
 		number = min(konumber,oppo_konumber)	
@@ -2598,19 +2593,18 @@ def threating_rate_dict(battle,battle2):
 		if remain_hp == 0 and oppo_remain_hp == 0:
 			return 1
 		if remain_hp == 0:
-			return max(0.1,min(10,(1-oppo_remain_hp)))
+			return max(0.2,min(5,(1-oppo_remain_hp)))
 		if oppo_remain_hp == 0:
-			return max(0.1,min(10,1/(1.001-remain_hp)))
+			return max(0.2,min(5,1/(1.001-remain_hp)))
 		return 1
 
 	trm = {}
-	mon_vector_dict = vector_dict(battle,battle2)
-	oppo_vector_dict = vector_dict(battle2,battle)
+
 	for _mon in mon_vector_dict: 
 		trm[_mon] = {}
-		remain_hp = battle._team[_mon]._current_hp / battle._team[_mon]._max_hp
+		remain_hp = alive_mon[_mon]
 		for _oppo in mon_vector_dict[_mon]:
-			oppo_remain_hp = battle2._team[_oppo]._current_hp / battle2._team[_oppo]._max_hp
+			oppo_remain_hp = alive_oppo[_oppo]
 			moveset = mon_vector_dict[_mon][_oppo]
 			oppo_moveset = oppo_vector_dict[_oppo][_mon]
 			most_threating_quick_move = max(moveset, key=lambda move: prioried_damage(moveset[move]))
