@@ -192,10 +192,14 @@ def modified_move_vector(
 	side = copy.deepcopy(_side)
 	oppo_side = copy.deepcopy(_oppo_side)
 	movetype = copy.deepcopy(move.type)
-	types = [mon._mon.type_1]
+	types = []
+	if mon._mon.type_1:
+		types = types + [mon._mon.type_1]
 	if mon._mon.type_2:
 		types = types + [mon._mon.type_2]
-	oppo_types = [oppo._mon.type_1]
+	oppo_types = []
+	if oppo._mon.type_1:
+		oppo_types = oppo_types + [oppo._mon.type_1]
 	if oppo._mon.type_2:
 		oppo_types = oppo_types + [oppo._mon.type_2]
 	effects = copy.deepcopy(mon._mon._effects)
@@ -321,7 +325,7 @@ def modified_move_vector(
 
 	#p5 modifies if this is a switch
 	if move._id == "switch":
-		v[0] = 7 + speed_ratio
+		v[0] = 7
 		if ability == "intimidate":
 			if oppo_ability not in ("scrappy","owntempo","innerfocus","oblivious",):
 				v[13] -= 1
@@ -329,11 +333,17 @@ def modified_move_vector(
 					v[17] += 1
 				if oppo_item == "adrenalineorb":
 					v[17] += 1
-					v[99] = 1		
+					v[99] = 1	
+		if oppo_ability == "shadowtag" and ability != "shadowtag" and PokemonType.GHOST not in types:
+			v[41] = 1	
 		if ability == "shadowtag" and oppo_ability != "shadowtag":	
 			v[42] = 2
+		if oppo_ability == "magnetpull" and PokemonType.STEEL in types and PokemonType.GHOST not in types:
+			v[41] = 1			
 		if ability == "magnetpull" and PokemonType.STEEL in oppo_types:
 			v[42] = 2
+		if oppo_ability == "arenatrap" and _is_grounded(mon,field):
+			v[41] = 1		
 		if ability == "arenatrap" and _is_grounded(oppo,field):
 			v[42] = 2
 		if ability == "download":
@@ -2381,7 +2391,7 @@ def weather_field_vectorize(weather,field,turn):
 			v[8] = 5 - turn + field[Field.GRAVITY]
 		if Field.TRICK_ROOM in field:
 			v[9] = 5 - turn + field[Field.TRICK_ROOM]
-	return v
+	return v[:10]
 
 def side_condition_vectorize(side,turn):
 	v = np.zeros(10)
@@ -2505,7 +2515,7 @@ def reversalpower(ms,os):
 def vectordebug(v):
 	for i in range (0,len(v)):
 		if v[i] != 0:
-			print("v[%d]="%i,v[i])
+			print("v[%d] ="%i,v[i])
 
 
 
@@ -2525,6 +2535,19 @@ def vector_dict(battle,battle2,alive_mon,alive_oppo):
 				move_vector = modified_move_vector(Move(move),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
 				vector_dict[_mon][_oppo][move] = move_vector
 	return vector_dict
+
+def switch_dict(battle,battle2,alive_mon,alive_oppo):
+	switch_dict = {}
+
+	m = np.zeros((len(alive_mon),len(alive_oppo)))
+	for _mon in alive_mon:
+		mon = PokemonSet(battle._team[_mon])
+		switch_dict[_mon] = {}
+		for _oppo in alive_oppo:
+			oppo = PokemonSet(battle2._team[_oppo])
+			switch_dict[_mon][_oppo] = modified_move_vector(Switch(),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
+	return switch_dict
+
 
 def threating_rate_dict(mon_vector_dict,oppo_vector_dict,alive_mon,alive_oppo):
 	def priority(v):
@@ -2624,8 +2647,6 @@ def threating_rate_dict(mon_vector_dict,oppo_vector_dict,alive_mon,alive_oppo):
 
 			trm[_mon][_oppo] = threating_rate(remain_hp,oppo_remain_hp,mq,mt,mh,oq,ot,oh)
 			
-
-
 	return trm
 '''
 	#other special things when simulating : 

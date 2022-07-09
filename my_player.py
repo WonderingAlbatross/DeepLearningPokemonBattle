@@ -143,8 +143,6 @@ class MyPlayer(Player):
             elif split_message[1] == "win" or split_message[1] == "tie":
                 if split_message[1] == "win":
                     battle._won_by(split_message[2])                                        #nvm
-                    if battle._won:
-                        print(split_message[2],"wins\n\n")
                 else:
                     battle._tied()
                     print("tied\n")
