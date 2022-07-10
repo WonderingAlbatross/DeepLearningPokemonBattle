@@ -57,20 +57,22 @@ def my_won_by(self, player_name: str):
     if player_name == self._player_username:
         self._won = True
         if self != battle2:
-            scorelist += [getscore(self,battle2,scorelist[-1] + winning_score)]
-#            print(scorelist[-1])
+            if scorelist:
+                scorelist += [getscore(self,battle2,scorelist[-1] + winning_score)]
     else:
         self._won = False
         if self != battle2:
-            scorelist += [getscore(self,battle2,scorelist[-1] - winning_score)]
-#            print(scorelist[-1])
+            if scorelist:
+                scorelist += [getscore(self,battle2,scorelist[-1] - winning_score)]
+
     if self != battle2:
-        v = np.array(vectorlist)
-        s = np.array([tracebacked_scorelist(scorelist)[1:]]).T  
-        u = np.append(v,s,axis=1).tolist()
-        with open("data.csv","a",newline = "") as data:
-            writer = csv.writer(data) 
-            writer.writerows(u)
+        if scorelist:
+            v = np.array(vectorlist)
+            s = np.array([tracebacked_scorelist(scorelist)[1:]]).T  
+            u = np.append(v,s,axis=1).tolist()
+            with open("testdata.csv","a",newline = "") as data:
+                writer = csv.writer(data) 
+                writer.writerows(u)
         scorelist = []
         vectorlist = []
     self._finish_battle()
@@ -180,10 +182,14 @@ class CheatingPlayer(MyPlayer):
         
         alive_mon = {}                                                         #simplify this later
         alive_oppo = {}
-        for _mon in battle._team: 
+        for _mon in battle._team:
+            if _mon == "p1: Zoroark":
+                return self.choose_default_move()
             if not battle._team[_mon].fainted:
                 alive_mon[_mon] = battle._team[_mon]._current_hp / battle._team[_mon]._max_hp
         for _oppo in battle2._team:
+            if _oppo == "p2: Zoroark":
+                return self.choose_default_move()
             if not battle2._team[_oppo].fainted:
                 alive_oppo[_oppo] = battle2._team[_oppo]._current_hp / battle2._team[_oppo]._max_hp
         if not (alive_mon and alive_oppo):
@@ -249,6 +255,9 @@ class CheatingPlayer(MyPlayer):
         sc = vc.side_condition_vectorize(battle._side_conditions,battle._turn)[:7]
         oc = np.zeros(7)
         oc = vc.side_condition_vectorize(battle._opponent_side_conditions,battle._turn)[:7]
+        tr = 1
+        mtr = 1
+        otr = 1
 
 
 
@@ -259,9 +268,9 @@ class CheatingPlayer(MyPlayer):
             j = 0
             for _mon in alive_mon:
                 mt += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)[:17] * mon_value[j]
-                j += 1
                 if battle._team[_mon].active:
                     i = 0
+                    mtr = mon_value[j]
                     ms += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)
                     motn += mon_vector_dict[_mon][min(alive_oppo, key=lambda _oppo: mon_vector_dict[_mon][_oppo][best_move._id][1]+mon_vector_dict[_mon][_oppo][best_move._id][2]+mon_vector_dict[_mon][_oppo][best_move._id][53])][best_move._id]
                     for _oppo in alive_oppo:
@@ -272,7 +281,9 @@ class CheatingPlayer(MyPlayer):
                             mett += moveset[_move] / len(moveset) / 2 * oppo_value[i] / sum(oppo_value)
                         mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][53])] / 2 * oppo_value[i] / sum(oppo_value)
                         if battle2._team[_oppo].active:
+                            otr = oppo_value[i]
                             moveset = mon_vector_dict[_mon][_oppo]
+                            tr = threating_rate[_mon][_oppo]
                             for _move in moveset:
                                 mett += moveset[_move] / len(moveset) / 2 
                             mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][53])] / 2 
@@ -289,12 +300,13 @@ class CheatingPlayer(MyPlayer):
                             else:
                                 obtm += oppo_moveset[max(oppo_moveset, key=lambda _move: oppo_moveset[_move][1]+oppo_moveset[_move][2]+oppo_moveset[_move][53])]
                         i += 1
-
+                j += 1
+                
             mott /= sum(oppo_value)
             mett /= sum(oppo_value)
             ot /= sum(oppo_value)
             mt /= sum(mon_value)
-            learning_vector = np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc])
+            learning_vector = np.append(np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc]),[tr,mtr,otr])
         
         if best_move in battle.available_switches:
             active_mon = ""
@@ -304,9 +316,9 @@ class CheatingPlayer(MyPlayer):
             j = 0
             for _mon in alive_mon:
                 mt += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)[:17] * mon_value[j]
-                j += 1
                 if best_move == battle._team[_mon]:
                     i = 0
+                    mtr = mon_value[j]
                     ms += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)
                     motn += mon_switch_dict[_mon][max(alive_oppo, key=lambda _oppo: sum(mon_switch_dict[_mon][_oppo][13:20]))]
                     for _oppo in alive_oppo:
@@ -317,7 +329,9 @@ class CheatingPlayer(MyPlayer):
                             mett += moveset[_move] / len(moveset) / 2 * oppo_value[i] / sum(oppo_value)
                         mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][53])] / 2 * oppo_value[i] / sum(oppo_value)
                         if battle2._team[_oppo].active:
+                            otr = oppo_value[i]
                             moveset = mon_vector_dict[_mon][_oppo]
+                            tr = threating_rate[_mon][_oppo]
                             for _move in moveset:
                                 mett += moveset[_move] / len(moveset) / 2 
                             mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][53])] / 2 * oppo_value[i]
@@ -338,12 +352,13 @@ class CheatingPlayer(MyPlayer):
                                 for _move in oppo_vector_dict[_oppo][_mon]:
                                     oetm += oppo_vector_dict[_oppo][_mon][_move] / len(oppo_vector_dict[_oppo][_mon])                                
                         i += 1
+                j += 1
 
             mott /= sum(oppo_value)
             mett /= sum(oppo_value)
             ot /= sum(oppo_value)
             mt /= sum(mon_value)
-            learning_vector = np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc])   
+            learning_vector = np.append(np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc]),[tr,mtr,otr])
         vectorlist += [learning_vector.tolist()]
         scorelist += [score]
         return self.create_order(best_move)
@@ -475,6 +490,7 @@ def simply_modified_weight(move,mon,oppo,battle,battle2):
 
 def getscore(battle,battle2,winning_score):
     s = 0
+    '''
     for _oppo in battle._opponent_team:
         oppo = battle._opponent_team[_oppo]
         if oppo.fainted:
@@ -487,6 +503,7 @@ def getscore(battle,battle2,winning_score):
             s -= 2 * fainting_score
         else:
             s -= ( 1 - mon._current_hp/mon._max_hp ) * fainting_score
+    '''
     side = battle._side_conditions
     oppo_side = battle._opponent_side_conditions
     if SideCondition.SPIKES in side:
