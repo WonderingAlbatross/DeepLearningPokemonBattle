@@ -4,6 +4,7 @@ import orjson
 import numpy as np
 import time
 import csv
+import os
 
 import sys
 from typing import Dict
@@ -45,6 +46,7 @@ traceback_factor = 0.3
 fainting_score = 0
 value_score = 200
 winning_score = 500
+filename = "data.csv"
 
 
 
@@ -70,7 +72,7 @@ def my_won_by(self, player_name: str):
             v = np.array(vectorlist)
             s = np.array([tracebacked_scorelist(scorelist)[1:]]).T  
             u = np.append(v,s,axis=1).tolist()
-            with open("data.csv","a",newline = "") as data:
+            with open(filename,"a",newline = "") as data:
                 writer = csv.writer(data) 
                 writer.writerows(u)
         scorelist = []
@@ -546,6 +548,12 @@ def tracebacked_scorelist(score:list):
 
 
 async def main():
+
+    if os.path.isfile(filename) == False:
+        with open(filename,"w",newline = "") as data:
+            writer = csv.writer(data) 
+            writer.writerows([[i for i in range(712)]])
+
     team_1 = """
 Slowbro  
 Ability: Oblivious  
