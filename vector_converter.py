@@ -549,7 +549,7 @@ def modified_move_vector(
 
 
 	if oppo_ability == "wonderguard":
-		if v[1] or v[2] or v[53]:
+		if v[1] or v[2] or v[3]:
 			if movetype.damage_multiplier(*oppo_types) < 1.1:
 				v[1:] *= 0
 	if oppo_ability == "sturdy" and "ohko" in move.entry:
@@ -580,7 +580,7 @@ def modified_move_vector(
 	v[0] += speed_ratio
 
 
-	v[53] /= o_stats[6]														#turn to %
+	v[3] /= o_stats[6]														#turn to %
 
 	if move._id == "shellsidearm":
 		pd = pokemon_vectorize(oppo,{},{},False,False)[18]
@@ -628,7 +628,7 @@ def modified_move_vector(
 	if move._id == "crushgrip":
 		v[1] = 1 + 100 * o_stats[5]
 	if move._id in ("waterspout","eruption","dragonenergy"):
-		v[2] = 150 * m_stats[6]
+		v[2] = 150 * m_stats[5]
 	if move._id in ("reversal","flail"):
 		v[1] = reversalpower(mon)
 	if move._id == "punishment":
@@ -670,13 +670,13 @@ def modified_move_vector(
 
 
 	if move._id in ("naturesmadness","superfang"):
-		v[53] = o_stats[5] / 2
+		v[3] = o_stats[5] / 2
 	if move._id == "endeavor":
-		v[53] = max( 0, o_stats[5] - m_stats[6]*m_stats[6]/o_stats[6] )
+		v[3] = max( 0, o_stats[5] - m_stats[6]*m_stats[6]/o_stats[6] )
 	if move._id == "finalgambit":
-		v[53] = m_stats[6] * m_stats[6] / m_stats[6]
+		v[3] = m_stats[6] * m_stats[6] / m_stats[6]
 	if move.entry.get("volatileStatus","") == "partiallytrapped":
-		v[53] = o_stats[5] / 8
+		v[3] = o_stats[5] / 8
 
 	if mon._mon._status and mon._mon._status.name == "BRN" and ability != "guts" and move._id != "facade":
 		v[1] /= 2
@@ -822,7 +822,7 @@ def modified_move_vector(
 					else:
 						for _type in oppo_types:
 							damage_multiplier *= movetype.damage_multiplier(_type)
-			if v[1] or v[2] or v[53] or move._id == "thunderwave":
+			if v[1] or v[2] or v[3] or move._id == "thunderwave":
 				if damage_multiplier == 0:
 					if v[28]:
 						pdmg += 1/2
@@ -854,7 +854,7 @@ def modified_move_vector(
 			if ability == "parentalbond":
 				v[30] = 1 + v[30] * 2
 				damage_multiplier *= 1.25
-				v[53] *= 1.25
+				v[3] *= 1.25
 			if ability == "skilllink" and v[30] > 2.1:
 				damage_multiplier = 4
 			if move._id in ("tripleaxel","triplekick"):
@@ -865,6 +865,8 @@ def modified_move_vector(
 			if move._id == "knockoff":
 				if oppo._mon._item and oppo._mon._item != "lost":
 					damage_multiplier *= 1.5
+					if oppo_ability != "stickyhold":
+						v[99] = 1
 
 			if move._id in ("solarbeam","solarblade") and Weather.RAINDANCE in weather:
 				damage_multiplier *= 0.5
@@ -901,7 +903,7 @@ def modified_move_vector(
 					damage_multiplier *= 0.5
 					v[99] = 1	
 					if oppo_ability == "cheekpouch":
-						v[53] -= 1/3
+						v[3] -= 1/3
 			if movetype == PokemonType.DARK:
 				if "darkdura" in (ability,oppo_ability):
 					if "aurabreak" in (ability,oppo_ability):
@@ -920,7 +922,7 @@ def modified_move_vector(
 					damage_multiplier *= 1.5
 				if oppo_ability == "voltabsorb":
 					v = v * vclear 
-					v[53] = -1/2
+					v[3] = -1/2
 				if oppo_ability == "lightningrod":
 					v = v * vclear 
 					v[15] = 1
@@ -979,10 +981,10 @@ def modified_move_vector(
 					damage_multiplier *= 0.5
 				if oppo_ability == "waterabsorb":
 					v = v * vclear 
-					v[53] = -1/2
+					v[3] = -1/2
 				if oppo_ability == "dryskin":
 					v = v * vclear 
-					v[53] = -1/4
+					v[3] = -1/4
 				if oppo_ability == "stormdrain":
 					v = v * vclear 
 					v[15] = 1
@@ -1010,7 +1012,7 @@ def modified_move_vector(
 			if ability == "megalauncher":
 				if "pulse" in move.entry["flags"]:
 					damage_multiplier *= 1.5
-					v[53] *= 1.5
+					v[3] *= 1.5
 			if v[31]:
 				if ability == "toughclaws":
 					damage_multiplier *= 1.3
@@ -1030,10 +1032,10 @@ def modified_move_vector(
 					damage_multiplier *= 0.5
 			if oppo_ability == "furcoat" and move.entry["category"] == "Physical":
 				damage_multiplier *= 0.5
-				v[53] /= 2
+				v[3] /= 2
 			if oppo_ability == "icescales" and move.entry["category"] == "Special":
 				damage_multiplier *= 0.5
-				v[53] /= 2
+				v[3] /= 2
 
 			if ability == "rivalry":
 				if mon._mon._gender == PokemonGender.MALE:
@@ -1098,16 +1100,16 @@ def modified_move_vector(
 				if SideCondition.REFLECT in oppo_side or SideCondition.AURORA_VEIL in oppo_side:
 					if move.entry["category"] == "Physical":
 						damage_multiplier *= 0.5
-						v[53] /= 2
+						v[3] /= 2
 				if SideCondition.LIGHT_SCREEN in oppo_side or SideCondition.AURORA_VEIL in oppo_side:
 					if move.entry["category"] == "Special":
 						damage_multiplier *= 0.5
-						v[53] /= 2					
+						v[3] /= 2					
 
 
 
 
-			damage_multiplier *= 0.925 # randomness
+			#damage_multiplier *= 0.925 # randomness
 
 			v[1] *=  ( 2 * mon._mon._level + 10) / 250 * m_stats[0] / o_stats[1] / o_stats[6] * damage_multiplier
 			v[2] *= ( 2 * mon._mon._level + 10) / 250 * m_stats[2] / o_stats[3] / o_stats[6] * damage_multiplier
@@ -1129,31 +1131,31 @@ def modified_move_vector(
 			if oppo._mon._species == "shedinja":
 				v[1] = min(v[1],4)
 				v[2] = min(v[2],4)
-				v[53] = min(v[53],4)
+				v[3] = min(v[3],4)
 
 
 
 		if pokemon_vectorize(oppo,oppo_weather,oppo_field,oppo_ability,oppo_item)[14]:
-			sub_damage =  v[1]+v[2]+v[53]
+			sub_damage =  v[1]+v[2]+v[3]
 			if Effect.SUBSTITUTE in oppo_effects and ability != "infiltrator" and v[32] != 1:
-				if v[1]+v[2]+v[53] > 1/4:
+				if v[1]+v[2]+v[3] > 1/4:
 					v[54] = 1
 					if v[30]:
 						v[1] -= 1/4
 					else:
 						v[1:3] *= 0.001
-						v[53] = 0.001
+						v[3] = 0.001
 				else:
-					v[54] = v[1]+v[2]+v[53]
+					v[54] = v[1]+v[2]+v[3]
 					v[1:3] *= 0.001
-					v[53] = 0.001
+					v[3] = 0.001
 				if move.entry["category"] == "Status":
 					v = v * vclear
 			else: 
 				if oppo._mon._species == "mimikyu":
-					if v[1]+v[2]+v[53]:
+					if v[1]+v[2]+v[3]:
 						v[1:3] *= v[30] / ( 1.001 + v[30] )
-						v[53] = 1/8
+						v[3] = 1/8
 						v[54] = 1
 				if oppo._mon._species == "eiscue":
 					if move.entry["category"] == "Physical":
@@ -1199,7 +1201,7 @@ def modified_move_vector(
 
 	
 #	if deal damage
-	if v[1] or v[2] or v[53]:
+	if v[1] or v[2] or v[3]:
 		if item == "lifeorb" and ability != "sheerforce":
 			pdmg += 1/10
 		if item == "shellbell" and Effect.HEAL_BLOCK not in effects:
@@ -1241,9 +1243,9 @@ def modified_move_vector(
 				if stealboosts[i] > 0:
 					v[6+i] += 0.01 + stealboosts[i]
 					v[13+i] += - 0.01 - stealboosts[i]
-		if move._id == "clearsmog":							
-			for i in range(0,5):
-				v[13+i] = -stealboosts[i]
+		if move._id == "clearsmog" and v[2]:							
+			for i in range(0,7):
+				v[13+i] = - 0.01 - oppo_boosts[i]
 
 		#contact
 		if v[31]:
@@ -1264,7 +1266,7 @@ def modified_move_vector(
 			if oppo_ability in ("gooey","tanglinghair"):
 				v[10] -= 1 * ( 1 + v[30] )		
 			if oppo_ability == "aftermath" and ability != "damp":
-				if v[1]+v[2]+v[53] > o_stats[5]:
+				if v[1]+v[2]+v[3] > o_stats[5]:
 					pdmg += 1/4
 			if ability == "poisontouch":
 				v[23] += 1 - 0.7 ** ( 1 + v[30] )
@@ -1281,13 +1283,13 @@ def modified_move_vector(
 				v[14] += 1
 				v[99] = 1
 				if oppo_ability == "cheekpouch":
-					v[53] -= 1/3
+					v[3] -= 1/3
 		if move.entry["category"] == "Special":
 			if oppo_item == "marangaberry":
 				v[16] += 1
 				v[99] = 1
 				if oppo_ability == "cheekpouch":
-					v[53] -= 1/3
+					v[3] -= 1/3
 
 
 
@@ -1303,7 +1305,7 @@ def modified_move_vector(
 			heal += 1/6
 
 
-	if v[1]+v[2]+v[53] > o_stats[5]:
+	if v[1]+v[2]+v[3] > o_stats[5]:
 		if ability in ("moxie","chillingneigh","asoneglastrier"):
 			v[6] += 1
 		if ability in ("grimneigh","asonespectrier"):
@@ -1316,9 +1318,11 @@ def modified_move_vector(
 			v[6] += 3
 		if oppo_ability == "innardsout":
 			pdmg += o_stats[5] * o_stats[6] / m_stats[6]
+		if Effect.DESTINY_BOND in oppo_effects:
+			v[26] -= 2
 
 
-	if v[1]+v[2]+v[53]-v_oppo[8] > o_stats[5]:
+	if v[1]+v[2]+v[3]-v_oppo[8] > o_stats[5]:
 		if ability == "soulheart":
 			v[7] += 1
 
@@ -1335,7 +1339,7 @@ def modified_move_vector(
 	#p10 modifies one-time effect (berry,beserker, Fell Stinger, asone, etc)
 
 	# use item slot98 use oppo_item slot99 
-	if v[1] or v[2] or v[53]:
+	if v[1] or v[2] or v[3]:
 		if oppo_item == "redcard" and ability != "suctioncups":
 			v[38] = 1
 			v[99] = 1
@@ -1344,27 +1348,27 @@ def modified_move_vector(
 			v[38] = 0
 			v[99] = 1
 
-	if v[1]+v[2]+v[53] > o_stats[5] - 1/4 and v[1]+v[2]+v[53] < 1:
+	if v[1]+v[2]+v[3] > o_stats[5] - 1/4 and v[1]+v[2]+v[3] < 1:
 		if oppo_item in giantberry:
-			v[53] -= 1/3
+			v[3] -= 1/3
 			v[99] = 1
 			if oppo_ability == "cheekpouch":
-				v[53] -= 1/3
+				v[3] -= 1/3
 	else:
-		if v[1]+v[2]+v[53] > o_stats[5] - 1/2:
+		if v[1]+v[2]+v[3] > o_stats[5] - 1/2:
 			if oppo_ability in ("wimpout","emergencyexit"):
 				v[39] = 1
 				v[38] = 0
 			if oppo_ability == "berserk":
 				v[15] += 1
 			if oppo_ability == "gluttony" and oppo_item in giantberry:
-				v[53] -= 1/3
+				v[3] -= 1/3
 				v[99] = 1
 			if oppo_item == "sitrusberry":
-				v[53] -= 1/4
+				v[3] -= 1/4
 				v[99] = 1
 				if oppo_ability == "cheekpouch":
-					v[53] -= 1/3
+					v[3] -= 1/3
 
 
 	if item == "ejectpack":
@@ -1522,11 +1526,11 @@ def modified_move_vector(
 		if v[27] < 0:
 			v[27] = 0
 	v[26] = heal - pdmg - selfattact + v[28] * ( 1 - v[4])
-	v[27] *= (v[1]+v[2]+v[53]) * o_stats[6] / m_stats[6]
+	v[27] *= (v[1]+v[2]+v[3]) * o_stats[6] / m_stats[6]
 	v[26] += pokemon_vectorize(mon,weather,field,ability,item)[8]
 
 	if move._id == "painsplit": 
-		v[53] = (o_stats[5] - m_stats[6] * m_stats[6]) / 2
+		v[3] = (o_stats[5] - m_stats[6] * m_stats[6]) / 2
 		v[27] = (o_stats[5] * o_stats[6] - m_stats[6]) / 2
 
 	if oppo_ability == "suctioncups":
@@ -2002,7 +2006,7 @@ def move_vectorize(move:Move):
 		v[1] = 13
 		v[30] = 4
 			
-	#v[3] for pp when pp<5
+
 
 	v[4] = move.accuracy
 	if move.entry["accuracy"] is True:
@@ -2134,7 +2138,7 @@ def move_vectorize(move:Move):
 		v[26] = 1
 	if "mindBlownRecoil" in move.entry or move._id in ("bellydrum","curse"):
 		v[26] = -1/2
-	if move._id == "substitute":
+	if move._id in ("substitute","struggle"):
 		v[26] = -1/4
 	if move._id == "clangoroussoul":
 		v[26] = -1/3
@@ -2213,15 +2217,15 @@ def move_vectorize(move:Move):
 		v[52] = 0.2
 	if "damage" in move.entry:
 		if move.entry["damage"] == "level":
-			v[53] = level
+			v[3] = level
 		else:
-			v[53] = move.entry["damage"]
+			v[3] = move.entry["damage"]
 	if move._id == "finalgambit":
-		v[53] = 2*level
+		v[3] = 2*level
 	if move._id in ("naturesmadness","superfang"):
-		v[53] = 1.2*level
+		v[3] = 1.2*level
 
-# this slot53 for passive damage side effects	slot54 for break substitute
+	#v[53] for pp when pp<5	slot54 for break substitute
 
 
 
@@ -2245,7 +2249,7 @@ def move_vectorize(move:Move):
 		v[55] = _chance
 	if _volatilestatus == "partiallytrapped":			
 		v[42] = 1
-		v[53] = 0.3*level
+		v[3] = 0.3*level
 	if _volatilestatus == "confusion":
 		v[56] = _chance
 	if _volatilestatus == "curse":
@@ -2351,7 +2355,7 @@ def move_vectorize(move:Move):
 		v[92] = -0.5
 	if move._id in ("avalanche","revenge"):
 		v[92] = -1
-	if move._id == "shelltrap":
+	if move._id in ("shelltrap","suckerpunch"):
 		v[92] = -5
 
 #93"brn":#94"frz":#95"par":#96"psn":#97"slp":
@@ -2532,7 +2536,7 @@ def vector_dict(battle,battle2,alive_mon,alive_oppo):
 			oppo = PokemonSet(battle2._team[_oppo])
 			vector_dict[_mon][_oppo] = {}
 			for move in mon._mon.moves:
-				move_vector = modified_move_vector(Move(move),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
+				move_vector = modified_move_vector(Move(move),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)[:28]
 				vector_dict[_mon][_oppo][move] = move_vector
 	return vector_dict
 
@@ -2545,7 +2549,7 @@ def switch_dict(battle,battle2,alive_mon,alive_oppo):
 		switch_dict[_mon] = {}
 		for _oppo in alive_oppo:
 			oppo = PokemonSet(battle2._team[_oppo])
-			switch_dict[_mon][_oppo] = modified_move_vector(Switch(),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
+			switch_dict[_mon][_oppo] = modified_move_vector(Switch(),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)[:28]
 	return switch_dict
 
 
@@ -2553,16 +2557,16 @@ def threating_rate_dict(mon_vector_dict,oppo_vector_dict,alive_mon,alive_oppo):
 	def priority(v):
 		return v[0]
 	def prioried_damage(v):
-		if v[1] + v[2] +v[53]:
-			return v[1] + v[2] +v[53] +v[0]*10
+		if v[1] + v[2] + v[3]:
+			return v[1] + v[2] + v[3] +v[0]*10
 		else:
 			return 0
 	def damage(v):
-		return v[1] + v[2] +v[53]
+		return v[1] + v[2] + v[3]
 	def heal(v):
 		return v[26] + v[27]
 	def simplify(v):
-		return [v[0],v[1] + v[2] +v[53],v[26] + v[27]]
+		return [v[0],v[1] + v[2] + v[3], v[26] + v[27]]
 	def threating_rate(remain_hp,oppo_remain_hp,mq,mt,mh,oq,ot,oh):
 		if oh[2] > mt[1]:
 			if oppo_remain_hp > mq[1] or oh[0] > mq[0]:
@@ -2652,7 +2656,7 @@ def threating_rate_dict(mon_vector_dict,oppo_vector_dict,alive_mon,alive_oppo):
 	#other special things when simulating : 
 	xx swap, magicmirror, etc 
 	rapid spin (leechseed off), knockoff,switch, steadfast
-	unfreeze self move
+	sleeptalk
 	regenirator
 	weather grabbing
 	Fishious Rend,Bolt Beak
