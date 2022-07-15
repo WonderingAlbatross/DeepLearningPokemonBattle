@@ -45,7 +45,7 @@ start_time = time.time()
 
 
 
-#df1.to_parquet("data.parquet", compression=None)
+
 
 filename = "data"
 h1 = 5

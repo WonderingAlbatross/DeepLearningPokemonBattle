@@ -269,24 +269,26 @@ class MyPlayer(Player):
 
     def show_info(self,_mon,battle):
         mon = PokemonSet(_mon)
-        stats = mon._stats
-        moves = mon._mon._moves
-        ability = mon._mon._ability
-        item = mon._mon._item                        
-        print(mon._mon._species,stats,ability,item)
-        vc.vectordebug(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
-        if _mon.active:
-            print("effects:",_mon._effects)    
-            #print("protect_counter:",_mon._protect_counter) 
+        v = vc.pokemon_vectorize(mon,battle._weather,battle._fields)
+        if v[0]:
+            stats = mon._stats
+            moves = mon._mon._moves
+            ability = mon._mon._ability
+            item = mon._mon._item                        
+            print(mon._mon._species,ability,item)
+            print(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
+            if _mon.active:
+                print("effects:",_mon._effects)    
+                #print("protect_counter:",_mon._protect_counter) 
 
 
     def show_down(self,battle):
         if battle.active_pokemon:
             _mon = battle.active_pokemon
             self.show_info(_mon,battle)
-    #    for _mon in battle.team.values():
-    #        if not _mon.active:
-    #            self.show_info(_mon,battle)
+        for _mon in battle.team.values():
+            if not _mon.active:
+                self.show_info(_mon,battle)
  
 
     def show_opponent(self,battle): 

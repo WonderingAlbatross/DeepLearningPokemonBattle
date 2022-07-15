@@ -1663,7 +1663,7 @@ def modified_move_vector(
 		v[6+i] = max(v[6+i],-6-boosts[i])
 		v[13+i] = min(v[13+i],6-oppo_boosts[i])
 		v[13+i] = max(v[13+i],-6-oppo_boosts[i])
-	return v
+	return v.astype(np.float32)
 
 def modified_switch_vectorize(
 		mon:PokemonSet,
@@ -1725,7 +1725,6 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 	hpt = 0 								#heal 1/16 per turn
 	v[0] = mon._stats[0] / mon._stats[1]
 	v[1:6] = mon._stats[2:7]
-	v[17:22] = mon._stats[2:7]
 	if ability == "regenerator":
 		v[7] = 2
 	if ability == "naturalcure":
@@ -1870,7 +1869,8 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 			v[5] = 2000
 		else:
 			v[5] = 1
-
+	
+	v[17:22] = v[1:6]
 	effects = mon._mon._effects 
 	if mon._mon.active:
 		if Effect.AQUA_RING in effects:
@@ -1962,7 +1962,7 @@ def pokemon_vectorize(mon:PokemonSet,weather,field, _counts_ability = True, _cou
 	if Effect.PERISH2 in effects:					#test whether PERISH2 or PERISH3
 		v[8] -= 1
 
-	return(v[:25])
+	return(v[:25]).astype(np.float32)
 
 
 
@@ -2366,7 +2366,7 @@ def move_vectorize(move:Move):
 #98 use item #99 use oppo_item	
 
 
-	return v
+	return v.astype(np.float32)
 
 
 
@@ -2395,7 +2395,7 @@ def weather_field_vectorize(weather,field,turn):
 			v[8] = 5 - turn + field[Field.GRAVITY]
 		if Field.TRICK_ROOM in field:
 			v[9] = 5 - turn + field[Field.TRICK_ROOM]
-	return v[:10]
+	return v[:10].astype(np.float32)
 
 def side_condition_vectorize(side,turn):
 	v = np.zeros(10)
@@ -2421,7 +2421,7 @@ def side_condition_vectorize(side,turn):
 		v[8] = v[7] - min(v[0],1) - min(v[1],1)
 
 
-	return v[:9]
+	return v[:9].astype(np.float32)
 
 
 def _is_grounded(mon:PokemonSet,field:Optional[Dict]):
