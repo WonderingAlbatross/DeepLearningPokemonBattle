@@ -242,6 +242,26 @@ class CheatingPlayer(MyPlayer):
         #self.show_opponent(battle)
 
         #print(battle.active_pokemon._species,"->",battle2.active_pokemon._species)
+        if self.oppohaveactioned[battle]:
+            i = 0
+            for _oppo in alive_oppo:
+                if battle2._team[_oppo].active:
+                    _trm = threating_rate_matrix[:,i]
+                    j = 0
+                    for _mon in alive_mon:
+                        if j ==  np.argmax(_trm):
+                            print("safely switch",battle._team[_mon])
+                            return self.create_order(battle._team[_mon])
+                        j += 1
+                i += 1
+            j = 0
+            for _mon in alive_mon:
+                if j == np.argmax(mon_value):
+                    print("safely switch",battle._team[_mon])
+                    return self.create_order(battle._team[_mon])
+                j += 1
+
+            
         if battle.available_moves:
             best_move = movechooser(battle,battle2)
         else:
@@ -249,12 +269,12 @@ class CheatingPlayer(MyPlayer):
                 best_move = switchchooser(battle,battle2)
         
         #print("choose move:",best_move)
-        moto = np.zeros(28)
-        mott = np.zeros(28)
-        motn = np.zeros(28)
-        mett = np.zeros(28)
-        oetm = np.zeros(28)
-        obtm = np.zeros(28)
+        moto = np.zeros(100)
+        mott = np.zeros(100)
+        motn = np.zeros(100)
+        mett = np.zeros(100)
+        oetm = np.zeros(100)
+        obtm = np.zeros(100)
         ms = np.zeros(25)
         os = np.zeros(25)
         mt = np.zeros(17)            
@@ -454,7 +474,6 @@ def simply_modified_weight(move,mon,oppo,battle,battle2):
     w[25] = np.arctan(v[0])
     w[26] = 0.2*(1.2-mon._current_hp/mon._max_hp)
     w[27] = 0.2*(1.2-mon._current_hp/mon._max_hp)
-    '''
     w[28] = (1-v[4])*0.5
     w[35] = -0.5*(v[1]+v[2])
     w[36] = 0.1*(v[1]+v[2])
@@ -489,7 +508,7 @@ def simply_modified_weight(move,mon,oppo,battle,battle2):
     w[93:98] = np.ones(5)*0.2
     w[98] = -0.1
     w[99] = 0.1
-    '''
+    
     t = w.dot(v) * v[4] * (np.arctan(20*min(1.5,v[0]))+6)
     
     if t > 100:
@@ -567,7 +586,7 @@ async def main():
     if os.path.isfile(filename) == False:
         with open(filename,"w",newline = "") as data:
             writer = csv.writer(data) 
-            writer.writerows([[i for i in range(283)]])
+            writer.writerows([[i for i in range(715)]])
 
     team_1 = """
 Slowbro  
@@ -597,10 +616,10 @@ IVs: 0 Spe
         battle_format="gen8randombattle", max_concurrent_battles=1
     )
 
-    n_battles = 10000
+    n_battles = 100
     await cheating_player_1.battle_against(player_2, n_battles)
 
-    #print("CheatingPlayer won %d / %d battles"% (cheating_player_1.n_won_battles, n_battles))
+    print("CheatingPlayer won %d / %d battles"% (cheating_player_1.n_won_battles, n_battles))
     debug.close()
 
 

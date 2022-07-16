@@ -2536,7 +2536,7 @@ def vector_dict(battle,battle2,alive_mon,alive_oppo):
 			oppo = PokemonSet(battle2._team[_oppo])
 			vector_dict[_mon][_oppo] = {}
 			for move in mon._mon.moves:
-				move_vector = modified_move_vector(Move(move),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)[:28]
+				move_vector = modified_move_vector(Move(move),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
 				vector_dict[_mon][_oppo][move] = move_vector
 	return vector_dict
 
@@ -2549,7 +2549,7 @@ def switch_dict(battle,battle2,alive_mon,alive_oppo):
 		switch_dict[_mon] = {}
 		for _oppo in alive_oppo:
 			oppo = PokemonSet(battle2._team[_oppo])
-			switch_dict[_mon][_oppo] = modified_move_vector(Switch(),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)[:28]
+			switch_dict[_mon][_oppo] = modified_move_vector(Switch(),mon,oppo,battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions)
 	return switch_dict
 
 
@@ -2562,7 +2562,7 @@ def threating_rate_dict(mon_vector_dict,oppo_vector_dict,alive_mon,alive_oppo):
 		else:
 			return 0
 	def damage(v):
-		return v[1] + v[2] + v[3]
+		return v[1] + v[2] + v[3]									#can add spikes
 	def heal(v):
 		return v[26] + v[27]
 	def simplify(v):

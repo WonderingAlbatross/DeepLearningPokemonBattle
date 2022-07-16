@@ -49,7 +49,7 @@ traceback_factor = 0.9
 fainting_score = 0
 value_score = 200
 winning_score = 500
-filename = "data0.csv"
+filename = "data1.csv"
 
 
 
@@ -71,6 +71,7 @@ def my_won_by(self, player_name: str):
                 scorelist += [getscore(self,battle2,scorelist[-1] - winning_score)]
 
     if self != battle2:
+        if scorelist:
             v = np.array(vectorlist)
             s0 = np.array([tracebacked_scorelist(scorelist,1)[1:]]).T
             s1 = np.array([tracebacked_scorelist(scorelist,traceback_factor_1)[1:]]).T
@@ -82,11 +83,10 @@ def my_won_by(self, player_name: str):
             u = np.append(u,s3,axis=1)
             with open(filename,"a",newline = "") as data:
                 writer = csv.writer(data) 
-                writer.writerows(u.astype(np.float16()).tolist())
+                writer.writerows(u.astype(np.float32()).tolist()[1:])
         scorelist = []
         vectorlist = []
     self._finish_battle()
-
 
 def my_end_item(self, item):
     self._item = "lost"                         #change 1:add lost as item 
@@ -237,13 +237,24 @@ class CheatingPlayer(MyPlayer):
         #self.show_opponent(battle)
 
         #print(battle.active_pokemon._species,"->",battle2.active_pokemon._species)
-
-        if battle.available_moves:
-            best_move = movechooser(battle,battle2)
-        else:
-            if battle.available_switches:
-                best_move = switchchooser(battle,battle2)
-
+        if self.oppohaveactioned[battle]:
+            i = 0
+            for _oppo in alive_oppo:
+                if battle2._team[_oppo].active:
+                    _trm = threating_rate_matrix[:,i]
+                    j = 0
+                    for _mon in alive_mon:
+                        if j ==  np.argmax(_trm):
+                            print("safely switch",battle._team[_mon])
+                            return self.create_order(battle._team[_mon])
+                        j += 1
+                i += 1
+            j = 0
+            for _mon in alive_mon:
+                if j == np.argmax(mon_value):
+                    print("safely switch",battle._team[_mon])
+                    return self.create_order(battle._team[_mon])
+                j += 1
 
         weight = {}
         LV={}
@@ -338,9 +349,9 @@ class CheatingPlayer(MyPlayer):
                         i += 1
                 j += 1
             learning_vector = np.append(np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc]),[tr,mtr,otr])
-            weight[move] = model(torch.tensor(learning_vector.reshape(1,711).astype(np.float32))).detach().numpy()
+            weight[move] = model(torch.tensor(learning_vector.reshape(1,279).astype(np.float32))).detach().numpy()
             LV[move] = learning_vector
-#            print("move:",move,weight[move])
+            print("move:",move,weight[move])
         #if switch:
             #switch general
         active_mon = ""
@@ -392,15 +403,15 @@ class CheatingPlayer(MyPlayer):
             j += 1
             if switch in battle.available_switches:
                 learning_vector = np.append(np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc]),[tr,mtr,otr])      
-                weight[switch] = model(torch.tensor(learning_vector.reshape(1,711).astype(np.float32))).detach().numpy()-100   
+                weight[switch] = model(torch.tensor(learning_vector.reshape(1,279).astype(np.float32))).detach().numpy()-100   
                 LV[switch] = learning_vector        
-#                print("switch:",switch,weight[switch])
+                print("switch:",switch,weight[switch])
         
 
 
 
-#        best_move = max(weight, key=lambda _move: weight[_move])
-#        print("best_move",best_move)
+        best_move = max(weight, key=lambda _move: weight[_move])
+        print("best_move",best_move)
         
         
 
@@ -605,11 +616,11 @@ class ANNModel(nn.Module):
         out = self.fc4(out) 
         return out
 
-save = "model - mix310"
-input_dim = 711
-hidden_dim_1 = 300
-hidden_dim_2 = 100
-hidden_dim_3 = 0
+save = "model - 531"
+input_dim = 280
+hidden_dim_1 = 500
+hidden_dim_2 = 300
+hidden_dim_3 = 100
 output_dim = 1
 
 model = ANNModel(input_dim, hidden_dim_1, hidden_dim_2, hidden_dim_3,output_dim)
@@ -622,7 +633,7 @@ async def main():
     if os.path.isfile(filename) == False:
         with open(filename,"w",newline = "") as data:
             writer = csv.writer(data) 
-            writer.writerows([[i for i in range(712)]])
+            writer.writerows([[i for i in range(283)]])
 
 
 
@@ -634,7 +645,7 @@ async def main():
         battle_format="gen8randombattle", max_concurrent_battles=1
     )
 
-    n_battles = 100
+    n_battles = 1
     await cheating_player_1.battle_against(player_2, n_battles)
 
     print("CheatingPlayer won %d / %d battles"% (cheating_player_1.n_won_battles, n_battles))
