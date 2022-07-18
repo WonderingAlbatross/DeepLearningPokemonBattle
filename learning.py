@@ -48,18 +48,19 @@ start_time = time.time()
 
 
 filename = "data"
-h1 = 5
-h2 = 3
+testfilename = "data0"
+h1 = 2
+h2 = 2
 h3 = 1
 save = "model - "+ str(h1) + str(h2) + str(h3)
-input_dim = 280
+input_dim = 565
 hidden_dim_1 = h1*100
 hidden_dim_2 = h2*100
 hidden_dim_3 = h3*100
 output_dim = 1
-learning_rate = 0.00001
+learning_rate = 0.0001
 error = nn.MSELoss()
-batch_size = 1024
+batch_size = 128
 epoch = 1000
 
 sample_size = 102400
@@ -71,8 +72,7 @@ model = ANNModel(input_dim, hidden_dim_1, hidden_dim_2, hidden_dim_3,output_dim)
 if os.path.isfile(save):
 	model.load_state_dict(torch.load(save))
 	model.eval()
-else:
-	learning_rate *= 10
+
 
 
 
@@ -83,9 +83,9 @@ if os.path.isfile(filename+".parquet") == False:
 	df = pd.read_csv(filename+".csv",header=0)
 	df.to_parquet(filename+".parquet", compression=None)
 df1 = pd.read_parquet(filename+".parquet")
-df2 = pd.read_csv("data0.csv",header=0)
+df2 = pd.read_csv(testfilename+".csv",header=0)
 data2 = torch.tensor(df2.to_numpy().astype(np.float32)[:,:input_dim]).cuda(0)
-_target2 = np.array([df2.to_numpy().astype(np.float32)[:,input_dim]]).T
+_target2 = np.array([df2.to_numpy().astype(np.float32)[:,input_dim+2]]).T
 target2 = torch.tensor(_target2).cuda(0)
 
 
@@ -107,8 +107,8 @@ fig = []
 for num in range(epoch):
 	for count in range(int(df1.shape[0] / sample_size)-1):
 		#df1 = pd.read_parquet(filename+".parquet").sample(sample_size,random_state=int(time.time())).to_numpy().astype(np.float32)	
-		_dt = df1[count*sample_size:(count+1)*sample_size].to_numpy().astype(np.float32)
-		_target = torch.tensor(_dt[:,input_dim]).cuda(0)
+		_dt = df1[count*sample_size:min(df1.shape[0],(count+1)*sample_size)].to_numpy().astype(np.float32)
+		_target = torch.tensor(_dt[:,input_dim+2]).cuda(0)
 		target = torch.reshape(_target,(_target.size(dim=0),1))
 		data = torch.tensor(_dt[:,:input_dim]).cuda(0)
 		train = torch.utils.data.TensorDataset(data, target)
@@ -128,12 +128,16 @@ for num in range(epoch):
 	print(num+1,time.time()-start_time)
 	fig += [[loss.cpu().detach().numpy(),loss2.cpu().detach().numpy().astype(np.float32),num+1]]
 	
+	if num % 100 == 99:
+		learning_rate /= 10
+		torch.save(model.state_dict(), save+"-"+str(learning_rate))
+		
 
 
 
 
 fig = np.array(fig)
-torch.save(model.state_dict(), save)
+
 
 
 plt.figure()
@@ -142,9 +146,7 @@ plt.plot(
     fig[:,0],
     label="data_loss"
 )
-plt.legend()
-plt.show()
-plt.figure()
+
 plt.plot(
     fig[:,2],
     fig[:,1],

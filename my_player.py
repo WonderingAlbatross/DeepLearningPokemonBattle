@@ -270,15 +270,18 @@ class MyPlayer(Player):
     def show_info(self,_mon,battle):
         mon = PokemonSet(_mon)
         v = vc.pokemon_vectorize(mon,battle._weather,battle._fields)
-        if v[0]:
+        if v[7]:
             stats = mon._stats
             moves = mon._mon._moves
             ability = mon._mon._ability
             item = mon._mon._item                        
             print(mon._mon._species,ability,item)
-            print(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
             if _mon.active:
-                print("effects:",_mon._effects)    
+                print("effects:",_mon._effects) 
+                print(vc.pokemon_vectorize(mon,battle._weather,battle._fields))
+            else:
+                print(vc.pokemon_vectorize(mon,battle._weather,battle._fields)[:15])
+   
                 #print("protect_counter:",_mon._protect_counter) 
 
 

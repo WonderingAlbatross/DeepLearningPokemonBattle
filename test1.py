@@ -48,8 +48,8 @@ traceback_factor_3 = 0.3
 fainting_score = 0
 value_score = 200
 winning_score = 500
-filename = "data.csv"
-
+filename = "test.csv"
+debug_mode = True
 
 
 
@@ -181,7 +181,8 @@ class CheatingPlayer(MyPlayer):
             battle._finish_battle()
 
 #        start_time = time.time()    
-        print("turn:",battle._turn," ")
+        if debug_mode:   
+            print("turn:",battle._turn)
 #        if self.oppohaveactioned[battle]:
             #print("safeswitch")   
         global scorelist
@@ -190,20 +191,22 @@ class CheatingPlayer(MyPlayer):
         score = 0
 
         
-        alive_mon = {}                                                         #simplify this later
+        alive_mon = {}                                                        
         alive_oppo = {}
         for _mon in battle._team:
             if _mon in ("p1: Zoroark","p1: Ditto"):
                 return self.choose_default_move()
             if not battle._team[_mon].fainted:
-                alive_mon[_mon] = battle._team[_mon]._current_hp / battle._team[_mon]._max_hp
+                alive_mon[_mon] = vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)
         for _oppo in battle2._team:
             if _oppo in ("p2: Zoroark","p2: Ditto"):
                 return self.choose_default_move()
             if not battle2._team[_oppo].fainted:
-                alive_oppo[_oppo] = battle2._team[_oppo]._current_hp / battle2._team[_oppo]._max_hp
+                alive_oppo[_oppo] = vc.pokemon_vectorize(PokemonSet(battle2._team[_oppo]),battle._weather,battle._fields)
         if not (alive_mon and alive_oppo):
             return self.choose_default_move()
+
+
 
         mon_vector_dict = vc.vector_dict(battle,battle2,alive_mon,alive_oppo)
         oppo_vector_dict = vc.vector_dict(battle2,battle,alive_oppo,alive_mon)
@@ -228,14 +231,15 @@ class CheatingPlayer(MyPlayer):
         oppo_value = np.abs(oppo_value) * _k
         mon_value = np.abs(mon_value)
 
-        print(alive_mon,mon_value)
-        print(alive_oppo,oppo_value)
         score += (sum(mon_value)-sum(oppo_value))*value_score
-        print("score:",score)
-        print("player:")
-        self.show_down(battle)
-        print("opponent:")
-        player_2.show_down(battle2)
+        if debug_mode:   
+            print(alive_mon.keys(),mon_value)
+            print(alive_oppo.keys(),oppo_value)
+            print("score:",score)
+            print("player:")
+            self.show_down(battle)
+            print("opponent:")
+            player_2.show_down(battle2)
  #       #print("weather & field:",battle._weather,battle._fields)
  #       #print("side:",battle._side_conditions," oppo_side:",battle._opponent_side_conditions)
         
@@ -250,7 +254,8 @@ class CheatingPlayer(MyPlayer):
                     j = 0
                     for _mon in alive_mon:
                         if j ==  np.argmax(_trm):
-                            print("safely switch",battle._team[_mon])
+                            if debug_mode:   
+                                print("safely switch",battle._team[_mon])
                             return self.create_order(battle._team[_mon])
                         j += 1
                 i += 1
@@ -272,13 +277,10 @@ class CheatingPlayer(MyPlayer):
         moto = np.zeros(100)
         mott = np.zeros(100)
         motn = np.zeros(100)
-        mett = np.zeros(100)
         oetm = np.zeros(100)
         obtm = np.zeros(100)
-        ms = np.zeros(25)
-        os = np.zeros(25)
-        mt = np.zeros(17)            
-        ot = np.zeros(17)
+        ms = np.zeros(19)
+        os = np.zeros(19)
         wh = np.zeros(9)
         wh = vc.weather_field_vectorize(battle._weather,battle._fields,battle._turn)
         sc = np.zeros(7)
@@ -297,33 +299,25 @@ class CheatingPlayer(MyPlayer):
                 return self.choose_default_move()
             j = 0
             for _mon in alive_mon:
-                mt += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)[:17] * mon_value[j]
                 if battle._team[_mon].active:
                     i = 0
                     mtr = mon_value[j]
-                    ms += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)
+                    ms += alive_mon[_mon][6:]
                     motn += mon_vector_dict[_mon][min(alive_oppo, key=lambda _oppo: mon_vector_dict[_mon][_oppo][best_move._id][1]+mon_vector_dict[_mon][_oppo][best_move._id][2]+mon_vector_dict[_mon][_oppo][best_move._id][3])][best_move._id]
                     for _oppo in alive_oppo:
-                        mott += mon_vector_dict[_mon][_oppo][best_move._id] * oppo_value[i]
-                        ot += vc.pokemon_vectorize(PokemonSet(battle2._team[_oppo]),battle._weather,battle._fields)[:17] * oppo_value[i]                        
+                        mott += mon_vector_dict[_mon][_oppo][best_move._id] * oppo_value[i]                       
                         moveset = mon_vector_dict[_mon][_oppo]
-                        for _move in moveset:
-                            mett += moveset[_move] / len(moveset) / 2 * oppo_value[i] / sum(oppo_value)
-                        mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][3])] / 2 * oppo_value[i] / sum(oppo_value)
                         if battle2._team[_oppo].active:
                             otr = oppo_value[i]
                             moveset = mon_vector_dict[_mon][_oppo]
                             tr = threating_rate[_mon][_oppo]
-                            for _move in moveset:
-                                mett += moveset[_move] / len(moveset) / 2 
-                            mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][3])] / 2 
                             moto += moveset[best_move._id]
-                            os += vc.pokemon_vectorize(PokemonSet(battle2._team[_oppo]),battle._weather,battle._fields)                        
+                            os += alive_oppo[_oppo][6:]                       
                             oppo_moveset = oppo_vector_dict[_oppo][_mon]
                             deadly_moves = {}
                             for _move in oppo_moveset:                                              #todo: if choiseband 
                                 oetm += oppo_moveset[_move] / len(oppo_moveset)
-                                if oppo_moveset[_move][1]+oppo_moveset[_move][2]+oppo_moveset[_move][3] > alive_mon[_mon]:
+                                if oppo_moveset[_move][1]+oppo_moveset[_move][2]+oppo_moveset[_move][3] > alive_mon[_mon][7]:
                                     deadly_moves[_move] = oppo_moveset[_move]
                             if deadly_moves:
                                 obtm += deadly_moves[max(deadly_moves, key=lambda _move: deadly_moves[_move][0])]
@@ -333,10 +327,7 @@ class CheatingPlayer(MyPlayer):
                 j += 1
                 
             mott /= sum(oppo_value)
-            mett /= sum(oppo_value)
-            ot /= sum(oppo_value)
-            mt /= sum(mon_value)
-            learning_vector = np.append(np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc]),[tr,mtr,otr])
+            learning_vector = np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,oetm,obtm]),[ms,os]),[wh]),[sc,oc]),[tr,mtr,otr])
         
         if best_move in battle.available_switches:
             active_mon = ""
@@ -345,34 +336,26 @@ class CheatingPlayer(MyPlayer):
                     active_mon = _mon
             j = 0
             for _mon in alive_mon:
-                mt += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)[:17] * mon_value[j]
                 if best_move == battle._team[_mon]:
                     i = 0
                     mtr = mon_value[j]
-                    ms += vc.pokemon_vectorize(PokemonSet(battle._team[_mon]),battle._weather,battle._fields)
+                    ms += alive_mon[_mon][6:]
                     motn += mon_switch_dict[_mon][max(alive_oppo, key=lambda _oppo: sum(mon_switch_dict[_mon][_oppo][13:20]))]
                     for _oppo in alive_oppo:
                         mott += mon_switch_dict[_mon][_oppo] * oppo_value[i]
-                        ot += vc.pokemon_vectorize(PokemonSet(battle2._team[_oppo]),battle._weather,battle._fields)[:17] * oppo_value[i]                        
                         moveset = mon_vector_dict[_mon][_oppo]
-                        for _move in moveset:
-                            mett += moveset[_move] / len(moveset) / 2 * oppo_value[i] / sum(oppo_value)
-                        mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][3])] / 2 * oppo_value[i] / sum(oppo_value)
                         if battle2._team[_oppo].active:
                             otr = oppo_value[i]
                             moveset = mon_vector_dict[_mon][_oppo]
                             tr = threating_rate[_mon][_oppo]
-                            for _move in moveset:
-                                mett += moveset[_move] / len(moveset) / 2 
-                            mett += moveset[max(moveset, key=lambda _move: moveset[_move][1]+moveset[_move][2]+moveset[_move][3])] / 2 * oppo_value[i]
                             moto += mon_switch_dict[_mon][_oppo]
-                            os += vc.pokemon_vectorize(PokemonSet(battle2._team[_oppo]),battle._weather,battle._fields)
+                            os += alive_oppo[_oppo][6:]
                             if active_mon and self.oppohaveactioned[battle] == False:
                                 oppo_moveset = oppo_vector_dict[_oppo][active_mon]
                                 deadly_moves = {}
                                 for _move in oppo_moveset:
                                     oetm += oppo_vector_dict[_oppo][_mon][_move] / len(oppo_moveset)
-                                    if oppo_moveset[_move][1]+oppo_moveset[_move][2]+oppo_moveset[_move][3] > alive_mon[_mon]:
+                                    if oppo_moveset[_move][1]+oppo_moveset[_move][2]+oppo_moveset[_move][3] > alive_mon[_mon][7]:
                                         deadly_moves[_move] = oppo_moveset[_move]
                                 if deadly_moves:
                                     obtm += oppo_vector_dict[_oppo][_mon][max(deadly_moves, key=lambda _move: deadly_moves[_move][0])]
@@ -385,10 +368,7 @@ class CheatingPlayer(MyPlayer):
                 j += 1
 
             mott /= sum(oppo_value)
-            mett /= sum(oppo_value)
-            ot /= sum(oppo_value)
-            mt /= sum(mon_value)
-            learning_vector = np.append(np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,mett,oetm,obtm]),[ms,os]),[mt,ot]),[wh]),[sc,oc]),[tr,mtr,otr])
+            learning_vector = np.append(np.append(np.append(np.append(np.append(moto,[mott,motn,oetm,obtm]),[ms,os]),[wh]),[sc,oc]),[tr,mtr,otr])
         vectorlist += [learning_vector.tolist()]
         scorelist += [score]
         print("choose", best_move)
@@ -409,8 +389,9 @@ def movechooser(battle,battle2):
     weight = [0 for i in range(0,a+b)]
     for i in range(0,a):
         weight[i] = simply_modified_weight(battle.available_moves[i],battle.active_pokemon,battle2.active_pokemon,battle,battle2)
-        print("use",battle.available_moves[i]._id,weight[i])
-#        vc.vectordebug(vc.modified_move_vector(battle.available_moves[i],PokemonSet(battle.active_pokemon),PokemonSet(battle2.active_pokemon),battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions))
+        if debug_mode:        
+            print("use",battle.available_moves[i]._id,weight[i])
+            vc.vectordebug(vc.modified_move_vector(battle.available_moves[i],PokemonSet(battle.active_pokemon),PokemonSet(battle2.active_pokemon),battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions))
 
 
     oppo_most_threating_move = max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.active_pokemon,battle2,battle))
@@ -423,7 +404,8 @@ def movechooser(battle,battle2):
         weight[a+i] /= simply_modified_weight(Move(oppo_most_threating_move_2),battle2.active_pokemon,battle.available_switches[i],battle2,battle) ** 0.5 +0.0001
         most_threating_move = max(battle.available_switches[i]._moves, key=lambda move: simply_modified_weight(Move(move),battle.available_switches[i],battle2.active_pokemon,battle,battle2))
         weight[a+i] *= simply_modified_weight(Move(most_threating_move),battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
-        print("switch",battle.available_switches[i]._species,weight[a+i])
+        if debug_mode:        
+            print("switch",battle.available_switches[i]._species,weight[a+i])
  #       vc.vectordebug(vc.modified_move_vector(Switch(),PokemonSet(battle.available_switches[i]),PokemonSet(battle2.active_pokemon),battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions))
     for j in range(0,min(a+b,5)):
         k = list(weight).index(max(weight))
@@ -445,11 +427,12 @@ def switchchooser(battle,battle2):
     choise_weight = []
     for i in range(0,a):
         oppo_most_threating_move = Move(max(battle2.active_pokemon._moves, key=lambda move: simply_modified_weight(Move(move),battle2.active_pokemon,battle.available_switches[i],battle2,battle)))
-        threating_rate[i] /= simply_modified_weight(oppo_most_threating_move,battle2.active_pokemon,battle.available_switches[i],battle2,battle)
+        threating_rate[i] /= simply_modified_weight(oppo_most_threating_move,battle2.active_pokemon,battle.available_switches[i],battle2,battle) ** 0.5
         threating_rate[i] *= simply_modified_weight(Switch(),battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
         most_threating_move = Move(max(battle.available_switches[i]._moves, key=lambda move: simply_modified_weight(Move(move),battle.available_switches[i],battle2.active_pokemon,battle,battle2)))
         threating_rate[i] *= simply_modified_weight(most_threating_move,battle.available_switches[i],battle2.active_pokemon,battle,battle2) ** 0.5
-        #print("switch",battle.available_switches[i]._species,threating_rate[i])
+        if debug_mode:
+            print("switch",battle.available_switches[i]._species,threating_rate[i])
 #       vc.vectordebug(vc.modified_move_vector(Switch(),PokemonSet(battle.available_switches[i]),PokemonSet(battle2.active_pokemon),battle._weather,battle._fields,battle._side_conditions,battle._opponent_side_conditions))
     for j in range(0,min(a,3)):
         k = list(threating_rate).index(max(threating_rate))
@@ -586,7 +569,7 @@ async def main():
     if os.path.isfile(filename) == False:
         with open(filename,"w",newline = "") as data:
             writer = csv.writer(data) 
-            writer.writerows([[i for i in range(715)]])
+            writer.writerows([[i for i in range(569)]])
 
     team_1 = """
 Slowbro  
@@ -609,14 +592,14 @@ IVs: 0 Spe
 
 """
     debug = open("debug.txt","w")
-    sys.stdout = None
+    sys.stdout = debug
     
 
     cheating_player_1 = CheatingPlayer(
         battle_format="gen8randombattle", max_concurrent_battles=1
     )
 
-    n_battles = 100
+    n_battles = 1
     await cheating_player_1.battle_against(player_2, n_battles)
 
     print("CheatingPlayer won %d / %d battles"% (cheating_player_1.n_won_battles, n_battles))
