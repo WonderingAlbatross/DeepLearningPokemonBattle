@@ -48,7 +48,8 @@ from pokemonset import PokemonSet
 class MyPlayer(Player):
     __slots__ = (                                       #add forceswitchrequest
         "forceswitchrequest",
-        "oppohaveactioned"                                       
+        "oppohaveactioned",
+        "battleset"                                     
     )
     def __init__(
         self,
@@ -101,6 +102,7 @@ class MyPlayer(Player):
         self.logger.debug("Player initialisation finished")
         self.forceswitchrequest = {}
         self.oppohaveactioned = {}
+        self.battlesets = {}
 
 
     async def _handle_battle_message(self, split_messages: List[List[str]]) -> None:
@@ -119,9 +121,11 @@ class MyPlayer(Player):
         ):
             battle_info = split_messages[0][0].split("-")
             battle = await self._create_battle(battle_info)                                                             
-            
+            battleset = BattleSet(battle)
+            battlesets[battle] = battleset
         else:
             battle = await self._get_battle(split_messages[0][0])
+            battleset = battlesets[battle]
 
 
         for split_message in split_messages[1:]:
@@ -141,6 +145,8 @@ class MyPlayer(Player):
                             await self._handle_battle_request(battle)
                             battle.move_on_next_request = False
             elif split_message[1] == "win" or split_message[1] == "tie":
+                del self.forceswitchrequest[battle]
+                del self.oppohaveactioned[battle]
                 if split_message[1] == "win":
                     battle._won_by(split_message[2])                                        #nvm
                 else:

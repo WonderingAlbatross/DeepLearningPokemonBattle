@@ -677,9 +677,8 @@ def modified_move_vector(
 	if move._id == "endeavor":
 		v[3] = max( 0, o_stats[5] - m_stats[5]*m_stats[6]/o_stats[6] )
 	if move._id == "finalgambit":
-		v[3] = m_stats[5] * m_stats[6] / m_stats[6]
-	if move.entry.get("volatileStatus","") == "partiallytrapped":
-		v[3] = o_stats[5] / 8
+		v[3] = m_stats[5] * m_stats[6] / o_stats[6]
+
 
 	if mon._mon._status and mon._mon._status.name == "BRN" and ability != "guts" and move._id != "facade":
 		v[1] /= 2

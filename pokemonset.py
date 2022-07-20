@@ -1,5 +1,5 @@
 import numpy as np
-
+import copy
 from typing import Any
 from typing import Dict
 from typing import List
@@ -25,16 +25,18 @@ class PokemonSet:
 		"_speed_range",
 		"_current_pp",
 		"_already_moved",
-		"_last_move"
+		"_last_move",
+		"_item",
+		"_ability"
 		)
 
 	def __init__(self, _mon:Pokemon):
-		self._mon = _mon
+		self._mon = copy.deepcopy(_mon)			
 		self._stats = [0,0,0,0,0,0,0]
-		self._atk_clues: [1,999]
-		self._def_hp_clues: [1,999999]
-		self._spa_clues: [1,999]
-		self._spd_hp_clues: [1,999999]
+		self._atk_clues = [1,999]
+		self._def_hp_clues = [1,999999]
+		self._spa_clues = [1,999]
+		self._spd_hp_clues = [1,999999]
 		self._hp_clues: List(float)
 		self._speed_range = [1,1000]
 		self._current_pp: Dict[Move, int]
@@ -45,6 +47,8 @@ class PokemonSet:
 			self._stats[0] = _mon._current_hp
 			self._stats[1] = _mon._max_hp
 			self._stats[2:7] = _mon._last_request["stats"].values()
+		else:
+			self.predict()
 
 	def __repr__(self) -> str:
 		return self.__str__()
@@ -66,3 +70,8 @@ class PokemonSet:
 
 	def mixed_possible_set(self):
 		return self
+
+	def predict(self):
+		pass
+
+
