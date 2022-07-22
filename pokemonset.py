@@ -18,11 +18,11 @@ class PokemonSet:
 		"_mon",
 		"_stats",
 		"_atk_range",
-		"_def_range",
+		"_def_hp_range",
 		"_spa_range",
-		"_spd_range",
-		"_hp_clues",
-		"_speed_range",
+		"_spd_hp_range",
+		"_hp_range",
+		"_spe_range",
 		"_current_pp",
 		"_already_moved",
 		"_last_move",
@@ -33,15 +33,30 @@ class PokemonSet:
 	def __init__(self, _mon:Pokemon):
 		self._mon = copy.deepcopy(_mon)			
 		self._stats = [0,0,0,0,0,0,0]
-		self._atk_clues = [1,999]
-		self._def_hp_clues = [1,999999]
-		self._spa_clues = [1,999]
-		self._spd_hp_clues = [1,999999]
-		self._hp_clues: List(float)
-		self._speed_range = [1,1000]
+		self._atk_range = [10,500]
+		self._def_hp_range = [100,200000]
+		self._spa_range = [10,500]
+		self._spd_hp_range = [100,200000]
+		self._hp_range = [10,500]
+		self._spe_range = [10,500]
 		self._current_pp: Dict[Move, int]
 		self._already_moved = False
 		self._last_move = ""
+
+		if _mon._species in POKEDEX:
+			basestats = POKEDEX[_mon._species]["baseStats"]
+			lv = _mon._level
+			if _mon._species == "shedinja":
+				self._hp_range = [1,1]
+				self._def_hp_range = [1,1]
+				self._spd_hp_range = [1,1]
+			else:
+				self._hp_range = [int((basestats["hp"]*2+31)*lv/100+10+lv),int((basestats["hp"]*2+94)*lv/100+10+lv)]
+				self._def_hp_range = [_hp_range[0]*int((basestats["def"]*2+31)*lv/100+5),_hp_range[1]*int(((basestats["def"]*2+94)*lv/100+5)*1.1)]
+				self._spd_hp_range = [_hp_range[0]*int((basestats["spd"]*2+31)*lv/100+5),_hp_range[1]*int(((basestats["spd"]*2+94)*lv/100+5)*1.1)]
+			self._atk_range = [int(((basestats["atk"]*2)*lv/100+5)*0.9),int(((basestats["atk"]*2+94)*lv/100+5)*1.1)]
+			self._spa_range = [int(((basestats["spa"]*2)*lv/100+5)*0.9),int(((basestats["spa"]*2+94)*lv/100+5)*1.1)]
+			self._spe_range = [int(((basestats["spe"]*2)*lv/100+5)*0.9),int(((basestats["spe"]*2+94)*lv/100+5)*1.1)]
 
 		if _mon._last_request:
 			self._stats[0] = _mon._current_hp
@@ -73,5 +88,8 @@ class PokemonSet:
 
 	def predict(self):
 		pass
+
+	def clear_predict(self):
+		self._mon = copy.deepcopy(_mon)
 
 
