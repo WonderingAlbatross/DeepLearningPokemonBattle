@@ -1,5 +1,7 @@
 import numpy as np
 import copy
+import orjson
+
 from typing import Any
 from typing import Dict
 from typing import List
@@ -9,8 +11,23 @@ from typing import Union
 
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
+from poke_env.data import POKEDEX
+
+
 
 import building_guesser as bg
+
+
+EXP_LEARNSET: Dict[str, Any] = {}
+LEARNSET: Dict[str, Any] = {}
+
+
+
+with open("exp_learnset.json") as exp_learnset:
+	EXP_LEARNSET = orjson.loads(exp_learnset.read())
+with open("new_learnset.json") as learnset:
+	LEARNSET = orjson.loads(learnset.read())
+
 
 
 class PokemonSet:
@@ -24,10 +41,11 @@ class PokemonSet:
 		"_hp_range",
 		"_spe_range",
 		"_current_pp",
-		"_already_moved",
+		"_already_moved",							#todo: rewrite safely switch
 		"_last_move",
 		"_item",
-		"_ability"
+		"_ability",
+		"_possible_moves"
 		)
 
 	def __init__(self, _mon:Pokemon):
@@ -39,9 +57,10 @@ class PokemonSet:
 		self._spd_hp_range = [100,200000]
 		self._hp_range = [10,500]
 		self._spe_range = [10,500]
-		self._current_pp: Dict[Move, int]
+		self._current_pp: Dict[str, int] = {}
 		self._already_moved = False
-		self._last_move = ""
+		self._last_move = None
+		self._possible_moves: List[str] = []
 
 		if _mon._species in POKEDEX:
 			basestats = POKEDEX[_mon._species]["baseStats"]

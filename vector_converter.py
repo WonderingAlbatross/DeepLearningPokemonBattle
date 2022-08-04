@@ -853,14 +853,14 @@ def modified_move_vector(
 
 
 
-			if ability == "parentalbond":
+			if ability == "parentalbond" and v[1]+v[2]+v[3]:
 				v[30] = 1 + v[30] * 2
 				damage_multiplier *= 1.25
 				v[3] *= 1.25
 			if ability == "skilllink" and v[30] > 2.1:
-				damage_multiplier = 4
+				v[30] = 4
 			if move._id in ("tripleaxel","triplekick"):
-				damage_multiplier *= 5.23
+				damage_multiplier *= 6
 			else:
 				damage_multiplier *= 1 + v[30]
 			
@@ -1405,6 +1405,8 @@ def modified_move_vector(
 	if Weather.SUNNYDAY in weather:
 		if ability == "leafguard":
 			v[93:98] *= 0
+		if move._id == "growth":
+			v[6:13] *= 2
 	if Weather.SUNNYDAY in _weather:
 			v[83] /= 10
 	if Weather.RAINDANCE in oppo_weather:
@@ -2166,6 +2168,11 @@ def move_vectorize(move:Move):
 		v[29] = 1
 
 	#flags 30: "multihit"
+	if "multihit" in move.entry:
+		if move.entry["multihit"] == [2, 5]:
+			v[30] = 2.17
+		else:
+			v[30] = move.entry["multihit"] - 1
 	if "contact" in move.entry["flags"]:
 		v[31] = 1
 	if "sound" in move.entry["flags"]:
