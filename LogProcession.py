@@ -7,7 +7,15 @@ import pandas as pd
 import os
 import json
 
-col_order = ['battle_id', 'turn', 'total_turn', 'rank', 'weather', 'field', 'condition', 'p1_side', 'p1a_ability', 'p1a_form', 'p1a_hp', 'p1a_item', 'p1a_move', 'p1a_stat_boost', 'p1a_status', 'p1a_status_other', 'p1a_tera', 'p1b_ability', 'p1b_form', 'p1b_hp', 'p1b_item', 'p1b_move', 'p1b_stat_boost', 'p1b_status', 'p1b_status_other', 'p1b_tera', 'p1c_ability', 'p1c_form', 'p1c_hp', 'p1c_item', 'p1c_move', 'p1c_status', 'p1c_tera', 'p1d_ability', 'p1d_form', 'p1d_hp', 'p1d_item', 'p1d_move', 'p1d_status', 'p1d_tera', 'p2_side', 'p2a_ability', 'p2a_form', 'p2a_hp', 'p2a_item', 'p2a_move', 'p2a_stat_boost', 'p2a_status', 'p2a_status_other', 'p2a_tera', 'p2b_ability', 'p2b_form', 'p2b_hp', 'p2b_item', 'p2b_move', 'p2b_stat_boost', 'p2b_status', 'p2b_status_other', 'p2b_tera', 'p2c_ability', 'p2c_form', 'p2c_hp', 'p2c_item', 'p2c_move', 'p2c_status', 'p2c_tera', 'p2d_ability', 'p2d_form', 'p2d_hp', 'p2d_item', 'p2d_move', 'p2d_status', 'p2d_tera', 'win']
+col_order = ['battle_id', 'turn', 'total_turn', 'rank', 'weather', 'field', 'condition', 'p1_side', 
+'p1a_form', 'p1a_hp', 'p1a_ability', 'p1a_item', 'p1a_move', 'p1a_status', 'p1a_tera', 'p1a_stat_boost', 'p1a_status_other', 
+'p1b_form', 'p1b_hp', 'p1b_ability', 'p1b_item', 'p1b_move', 'p1b_status', 'p1b_tera', 'p1b_stat_boost', 'p1b_status_other', 
+'p1c_form', 'p1c_hp', 'p1c_ability', 'p1c_item', 'p1c_move', 'p1c_status', 'p1c_tera', 
+'p1d_form', 'p1d_hp', 'p1d_ability', 'p1d_item', 'p1d_move', 'p1d_status', 'p1d_tera', 'p2_side', 
+'p2a_form', 'p2a_hp', 'p2a_ability', 'p2a_item', 'p2a_move', 'p2a_status', 'p2a_tera', 'p2a_stat_boost', 'p2a_status_other', 
+'p2b_form', 'p2b_hp', 'p2b_ability', 'p2b_item', 'p2b_move', 'p2b_status', 'p2b_tera', 'p2b_stat_boost', 'p2b_status_other', 
+'p2c_form', 'p2c_hp', 'p2c_ability', 'p2c_item', 'p2c_move', 'p2c_status', 'p2c_tera', 
+'p2d_form', 'p2d_hp', 'p2d_ability', 'p2d_item', 'p2d_move', 'p2d_status', 'p2d_tera',  'win']
 sto_dict = {'Taunt':3,'Encore':3,'confusion':4,'Throat Chop':2,'Heal Block':2,'Slow Start':5}
 
 def write_error(string, line, num):
@@ -120,7 +128,7 @@ def bt_switch(battle,line):
 def bt_move(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
     move = line[2]
-    if move != 'Struggle':
+    if move != 'Struggle' and '[from]ability: Dancer' not in line:
         if move in pokemon.move:
             pokemon.move[move] -= 1
         else:
@@ -309,6 +317,8 @@ def bt_sideend(battle,line):
     if side not in player.side:
         write_error('sideend error',line,battle.num)
     del player.side[side]
+def bt_swapsideconditions(battle,line):
+    battle.player['p1'].side,battle.player['p2'].side = battle.player['p2'].side, battle.player['p1'].side
 
 def bt_detailschange(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
@@ -320,6 +330,7 @@ def bt_transform(battle,line):
     pokemon.status_other['ditto'] = 1 
     pokemon.form = target.form
     pokemon.ability = target.ability
+    pokemon.move = {}
     for mv in target.move:
         pokemon.move[mv] = 5
     pokemon.stat_boost = {}
@@ -417,7 +428,9 @@ def line_handler(battle,line):
     elif line[0] == '-sidestart':
         bt_sidestart(battle,line)              
     elif line[0] == '-sideend':
-        bt_sideend(battle,line)    
+        bt_sideend(battle,line)  
+    elif line[0] == '-swapsideconditions':
+        bt_swapsideconditions(battle,line)   
     elif line[0] == '-status':
         bt_status(battle,line) 
     elif line[0] == '-curestatus':
@@ -470,7 +483,7 @@ def line_handler(battle,line):
 
 def get_battle_situation(battle):
     situation = {}
-    situation['turn'] = battle.turn
+    situation['turn'] = battle.turn-1
     if battle.weather[0]:
         situation['weather'] = battle.weather[0] + ':' + str(battle.weather[1])
     if battle.field[0]:
@@ -593,7 +606,11 @@ def log_process(file_path):
     battle = Battle(reg_num[0],reg_num[1])
     for line in turn_log[0]:
         if line[0] == 'player':
-            battle.player[line[1]] = Player(line[1],line[2],line[4])
+            if len(line)>4:
+                rank = line[4]
+            else:
+                rank = 1000
+            battle.player[line[1]] = Player(line[1],line[2], rank)
         if line[0] == 'poke':
             pokemon_name = line[2].split(',')[0]
             if 'Zoroark' in pokemon_name:
@@ -631,9 +648,8 @@ def log_process(file_path):
         #print(battle.player['p2'].show_all_pokemon())
         #print(battle.player['p2'].position,battle.player['p2'].backup)
         #print(battle.turn,battle.player['p1'].alive_number(),battle.player['p2'].alive_number())
-        battle_situations.append(get_battle_situation(battle))
-
         battle.end_turn()
+        battle_situations.append(get_battle_situation(battle))
 
     for situation in battle_situations:
         situation['win'] = win
@@ -643,10 +659,11 @@ def log_process(file_path):
     #print(battle_situations)
     return(battle_situations)
 
-''
+
 directory = './log'
 dfs = []
 for file_name in os.listdir(directory):
+    print(file_name)
     if file_name.endswith('txt'):
         file_path = os.path.join(directory, file_name)
         battle_situations = log_process(file_path)
@@ -659,5 +676,5 @@ df.to_csv('output.csv', index=False)
 
 '''
 
-log_process('./log/gen9vgc2024regg-2113252505.txt')
+log_process('./log/gen9vgc2024regg-2123964536.txt')
 '''
