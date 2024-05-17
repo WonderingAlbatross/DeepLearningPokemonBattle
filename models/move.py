@@ -5,7 +5,7 @@ class Move:
         MOVEDATA = json.load(file)
         
     def __init__(self, name):
-        self.code = ''.join(char.lower() for char in name if char not in ',- ')
+        self.code = ''.join(char.lower() for char in name if char not in ',\'- ')
         self.name = name
 
     def get_info(self,info):
@@ -17,7 +17,7 @@ class Move:
             self.write_error('MOVEDATA error',[self.code,info])
             return 99   
 
-    def write_error(string, line):
+    def write_error(self,string, line):
         with open('error.txt', 'a') as file:
             file.write(string+'\n')
             for item in line:
