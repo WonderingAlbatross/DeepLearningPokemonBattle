@@ -1,0 +1,285 @@
+{
+ "brn": {
+  "name": "brn",
+  "effectType": "Status",
+  "onStart": "onStart",
+  "onResidualOrder": 10,
+  "onResidual": "onResidual"
+ },
+ "par": {
+  "name": "par",
+  "effectType": "Status",
+  "onStart": "onStart",
+  "onModifySpePriority": -101,
+  "onModifySpe": "onModifySpe",
+  "onBeforeMovePriority": 1,
+  "onBeforeMove": "onBeforeMove"
+ },
+ "slp": {
+  "name": "slp",
+  "effectType": "Status",
+  "onStart": "onStart",
+  "onBeforeMovePriority": 10,
+  "onBeforeMove": "onBeforeMove"
+ },
+ "frz": {
+  "name": "frz",
+  "effectType": "Status",
+  "onStart": "onStart",
+  "onBeforeMovePriority": 10,
+  "onBeforeMove": "onBeforeMove",
+  "onModifyMove": "onModifyMove",
+  "onAfterMoveSecondary": "onAfterMoveSecondary",
+  "onDamagingHit": "onDamagingHit"
+ },
+ "psn": {
+  "name": "psn",
+  "effectType": "Status",
+  "onStart": "onStart",
+  "onResidualOrder": 9,
+  "onResidual": "onResidual"
+ },
+ "tox": {
+  "name": "tox",
+  "effectType": "Status",
+  "onStart": "onStart",
+  "onSwitchIn": "onSwitchIn",
+  "onResidualOrder": 9,
+  "onResidual": "onResidual"
+ },
+ "confusion": {
+  "name": "confusion",
+  "onStart": "onStart",
+  "onEnd": "onEnd",
+  "onBeforeMovePriority": 3,
+  "onBeforeMove": "onBeforeMove"
+ },
+ "flinch": {
+  "name": "flinch",
+  "duration": 1,
+  "onBeforeMovePriority": 8,
+  "onBeforeMove": "onBeforeMove"
+ },
+ "trapped": {
+  "name": "trapped",
+  "noCopy": true,
+  "onTrapPokemon": "onTrapPokemon",
+  "onStart": "onStart"
+ },
+ "trapper": {
+  "name": "trapper",
+  "noCopy": true
+ },
+ "partiallytrapped": {
+  "name": "partiallytrapped",
+  "duration": 5,
+  "durationCallback": "durationCallback",
+  "onStart": "onStart",
+  "onResidualOrder": 13,
+  "onResidual": "onResidual",
+  "onEnd": "onEnd",
+  "onTrapPokemon": "onTrapPokemon"
+ },
+ "lockedmove": {
+  "name": "lockedmove",
+  "duration": 2,
+  "onResidual": "onResidual",
+  "onStart": "onStart",
+  "onRestart": "onRestart",
+  "onEnd": "onEnd",
+  "onLockMove": "onLockMove"
+ },
+ "twoturnmove": {
+  "name": "twoturnmove",
+  "duration": 2,
+  "onStart": "onStart",
+  "onEnd": "onEnd",
+  "onLockMove": "onLockMove",
+  "onMoveAborted": "onMoveAborted"
+ },
+ "choicelock": {
+  "name": "choicelock",
+  "noCopy": true,
+  "onStart": "onStart",
+  "onBeforeMove": "onBeforeMove",
+  "onDisableMove": "onDisableMove"
+ },
+ "mustrecharge": {
+  "name": "mustrecharge",
+  "duration": 2,
+  "onBeforeMovePriority": 11,
+  "onBeforeMove": "onBeforeMove",
+  "onStart": "onStart",
+  "onLockMove": "recharge"
+ },
+ "futuremove": {
+  "name": "futuremove",
+  "duration": 3,
+  "onResidualOrder": 3,
+  "onEnd": "onEnd"
+ },
+ "healreplacement": {
+  "name": "healreplacement",
+  "onStart": "onStart",
+  "onSwitchInPriority": 1,
+  "onSwitchIn": "onSwitchIn"
+ },
+ "stall": {
+  "name": "stall",
+  "duration": 2,
+  "counterMax": 729,
+  "onStart": "onStart",
+  "onStallMove": "onStallMove",
+  "onRestart": "onRestart"
+ },
+ "gem": {
+  "name": "gem",
+  "duration": 1,
+  "affectsFainted": true,
+  "onBasePowerPriority": 14,
+  "onBasePower": "onBasePower"
+ },
+ "raindance": {
+  "name": "RainDance",
+  "effectType": "Weather",
+  "duration": 5,
+  "durationCallback": "durationCallback",
+  "onWeatherModifyDamage": "onWeatherModifyDamage",
+  "onFieldStart": "onFieldStart",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "primordialsea": {
+  "name": "PrimordialSea",
+  "effectType": "Weather",
+  "duration": 0,
+  "onTryMovePriority": 1,
+  "onTryMove": "onTryMove",
+  "onWeatherModifyDamage": "onWeatherModifyDamage",
+  "onFieldStart": "onFieldStart",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "sunnyday": {
+  "name": "SunnyDay",
+  "effectType": "Weather",
+  "duration": 5,
+  "durationCallback": "durationCallback",
+  "onWeatherModifyDamage": "onWeatherModifyDamage",
+  "onFieldStart": "onFieldStart",
+  "onImmunity": "onImmunity",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "desolateland": {
+  "name": "DesolateLand",
+  "effectType": "Weather",
+  "duration": 0,
+  "onTryMovePriority": 1,
+  "onTryMove": "onTryMove",
+  "onWeatherModifyDamage": "onWeatherModifyDamage",
+  "onFieldStart": "onFieldStart",
+  "onImmunity": "onImmunity",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "sandstorm": {
+  "name": "Sandstorm",
+  "effectType": "Weather",
+  "duration": 5,
+  "durationCallback": "durationCallback",
+  "onModifySpDPriority": 10,
+  "onModifySpD": "onModifySpD",
+  "onFieldStart": "onFieldStart",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onWeather": "onWeather",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "hail": {
+  "name": "Hail",
+  "effectType": "Weather",
+  "duration": 5,
+  "durationCallback": "durationCallback",
+  "onFieldStart": "onFieldStart",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onWeather": "onWeather",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "snow": {
+  "name": "Snow",
+  "effectType": "Weather",
+  "duration": 5,
+  "durationCallback": "durationCallback",
+  "onModifyDefPriority": 10,
+  "onModifyDef": "onModifyDef",
+  "onFieldStart": "onFieldStart",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "deltastream": {
+  "name": "DeltaStream",
+  "effectType": "Weather",
+  "duration": 0,
+  "onEffectivenessPriority": -1,
+  "onEffectiveness": "onEffectiveness",
+  "onFieldStart": "onFieldStart",
+  "onFieldResidualOrder": 1,
+  "onFieldResidual": "onFieldResidual",
+  "onFieldEnd": "onFieldEnd"
+ },
+ "dynamax": {
+  "name": "Dynamax",
+  "noCopy": true,
+  "onStart": "onStart",
+  "onTryAddVolatile": "onTryAddVolatile",
+  "onBeforeSwitchOutPriority": -1,
+  "onBeforeSwitchOut": "onBeforeSwitchOut",
+  "onSourceModifyDamage": "onSourceModifyDamage",
+  "onDragOutPriority": 2,
+  "onDragOut": "onDragOut",
+  "onResidualPriority": -100,
+  "onResidual": "onResidual",
+  "onEnd": "onEnd"
+ },
+ "commanded": {
+  "name": "Commanded",
+  "noCopy": true,
+  "onStart": "onStart",
+  "onDragOutPriority": 2,
+  "onDragOut": "onDragOut",
+  "onTrapPokemonPriority": -11,
+  "onTrapPokemon": "onTrapPokemon"
+ },
+ "commanding": {
+  "name": "Commanding",
+  "noCopy": true,
+  "onDragOutPriority": 2,
+  "onDragOut": "onDragOut",
+  "onTrapPokemonPriority": -11,
+  "onTrapPokemon": "onTrapPokemon",
+  "onInvulnerability": false,
+  "onBeforeTurn": "onBeforeTurn"
+ },
+ "arceus": {
+  "name": "Arceus",
+  "onTypePriority": 1,
+  "onType": "onType"
+ },
+ "silvally": {
+  "name": "Silvally",
+  "onTypePriority": 1,
+  "onType": "onType"
+ },
+ "rolloutstorage": {
+  "name": "rolloutstorage",
+  "duration": 2,
+  "onBasePower": "onBasePower"
+ }
+}
