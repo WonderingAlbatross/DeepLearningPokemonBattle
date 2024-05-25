@@ -509,11 +509,12 @@ def get_battle_situation(battle):
             elif pokemon.status[0]:
                 situation[pcs+'_status'] = pokemon.status[0]
             status_others = []
+
             for sto in pokemon.status_other:
                 if isinstance(pokemon.status_other[sto],int) and pokemon.status_other[sto] <= 0:
                     write_error('status_error',[sto,str(pokemon.status_other[sto]),str(battle.turn)],battle.num)
-                    del pokemon.status_other[sto]
-                status_others.append(sto+":"+str(pokemon.status_other[sto]))
+                else:
+                    status_others.append(sto+":"+str(pokemon.status_other[sto]))
             if status_others:
                 situation[pcs+'_status_other'] = ','.join(status_others)
             stat_boost = []
@@ -670,21 +671,35 @@ def log_process(file_path):
 
 
 directory = './log'
-dfs = []
+df_train_list = []
+df_test_list = []
+i = 0
 for file_name in os.listdir(directory):
+    i += 1
     print(file_name)
     if file_name.endswith('txt'):
         file_path = os.path.join(directory, file_name)
         battle_situations = log_process(file_path)
         if battle_situations:
-            dfs.append(pd.DataFrame(battle_situations))
+            if i % 10:
+                df_train_list.append(pd.DataFrame(battle_situations))
+            else:
+                df_test_list.append(pd.DataFrame(battle_situations))
 
-df = pd.concat(dfs, sort=False)
+df_test = pd.concat(df_test_list, sort=False)
+df_train = pd.concat(df_train_list, sort=False)
+
 for col in col_order:
-    if col not in df.columns:
-        df[col] = None
-df = df[col_order]
-df.to_csv('output.csv', index=False)
+    if col not in df_test.columns:
+        df_test[col] = None
+df_test = df_test[col_order]
+for col in col_order:
+    if col not in df_train.columns:
+        df_train[col] = None
+df_train = df_train[col_order]
+
+df_test.to_csv('test01.csv', index=False)
+df_train.to_csv('train01.csv', index=False)
 
 
 '''
