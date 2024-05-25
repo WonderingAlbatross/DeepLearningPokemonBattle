@@ -3,8 +3,6 @@ import numpy as np
 
 
 name_code = pd.read_csv('pokemon_code.csv')
-data = pd.read_csv('output.csv')
-
 name_code.set_index('Name', inplace=True)
 ncd = len(name_code)   # number of coded pokemon
 boost_to_code = {'atk':0,'def':1,'spa':2,'spd':3,'spe':4,'accuracy':5,'evasion':6}
@@ -33,11 +31,11 @@ def get_vector_by_name(name):
 
 
 
-def get_weight(rank):
-    return 1 + (rank-1000)/400
+def get_weight(rank,turn,total_turn):
+    return (1 + (rank-1000)/400)*(turn+1)/(total_turn+1)*(1+np.log(total_turn+1))
 
 def vectorize(row):
-    weight = get_weight(row['rank'])
+    weight = get_weight(row['rank'],row['turn'],row['total_turn'])
     win=row['win']
     pokemon_dict = {}
     player_dict = {}
@@ -155,19 +153,23 @@ def vectorize(row):
 
 
 
-
-    vec = weather_v + field_v + condition_v
-    for p in ['p1','p2']:
-        vec += player_dict[p]
-    for p in ['p1a','p1b','p1c','p1d','p2a','p2b','p2c','p2d']:
-        vec += pokemon_dict[p]
     result = {}
-    for i,n in enumerate(vec):
-        result[i] = n
-    result['output'] = win
+    result['weather'] = weather_v
+    result['field'] = field_v
+    result['condition'] = condition_v
+    for p in ['p1','p2']:
+        result[p] = player_dict[p]
+    for p in ['p1a','p1b','p1c','p1d','p2a','p2b','p2c','p2d']:
+        result[p] = pokemon_dict[p]
+    result['output'] = (win + 1)/2
     result['weight'] = weight
     return result
 
 
-vectorized_data = pd.DataFrame(data.apply(vectorize, axis=1).tolist())
-vectorized_data.to_csv("vectorized_data.csv",index=False)
+
+for datafile in ['test01.csv','train01.csv']:
+    data = pd.read_csv(datafile)
+    #data_f = data[(data['rank'] > 1200) & ((data['total_turn'] - data['turn']) < 4)]
+    data_f = data
+    vectorized_data = pd.DataFrame(data_f.apply(vectorize, axis=1).tolist())
+    vectorized_data.to_csv("vectorized_"+datafile,index=False)
