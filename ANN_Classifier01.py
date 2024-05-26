@@ -25,7 +25,7 @@ class ANN(nn.Module):
         return x
 
 
-def combine(row,switch_p1_p2):
+def combine(row,switch_p1_p2):          #w,f,c,p1,p1a,...p2,p2a...
     vec = ast.literal_eval(row['weather']) + ast.literal_eval(row['field']) + ast.literal_eval(row['condition'])
     p1,p2 = 'p1','p2'
     if switch_p1_p2:
@@ -72,7 +72,6 @@ def start_learning(train_path,test_path,lr,l1_size,l2_size,batch_size,epoch_num)
     train_X, train_y, train_w = get_Tensor(train_path)
     test_X, test_y, test_w = get_Tensor(test_path)
     train_tensor = TensorDataset(train_X, train_y, train_w)
-    input_size = test_X.shape[1]
     dataloader = DataLoader(train_tensor, batch_size, shuffle=True)
 
 
@@ -80,8 +79,9 @@ def start_learning(train_path,test_path,lr,l1_size,l2_size,batch_size,epoch_num)
         model = torch.load(save_model_name+'.pth')
         print("model loaded")
     else:
+        input_size = test_X.shape[1]
         model = ANN(input_size,l1_size,l2_size).to(device)
-        print("model created")
+        print("model created, input_size = ",input_size)
     criterion = nn.BCELoss(reduction='none')
     optimizer = torch.optim.Adam(model.parameters(), lr)
 
@@ -110,12 +110,17 @@ def start_learning(train_path,test_path,lr,l1_size,l2_size,batch_size,epoch_num)
         print(f'Epoch {epoch+starting_epoch}, Loss: {loss.item()}')
 
         if not (epoch+1) % 10:
+            lr *= 0.95
             output_test = model(test_X)
             loss_test = criterion(output_test, test_y)
             loss_test = (loss_test * test_w).sum()/test_w.sum()
             test_loss['epoch'].append(epoch+starting_epoch)
             test_loss['Test_Loss'].append(loss_test.item())
             print(f'Epoch {epoch+starting_epoch}, Test_Loss: {loss_test.item()}')
+        if not (epoch+1) % 50:
+            torch.save(model, 'temp_'+save_model_name+'_'+str(epoch+starting_epoch)+'.pth')
+            temp_loss = pd.merge(pd.DataFrame(train_loss),pd.DataFrame(test_loss),on='epoch',how='outer')
+            temp_loss.to_csv('temp_'+save_model_name+'_'+str(epoch+starting_epoch)+'_loss.csv', index=False)
 
 
 
@@ -134,7 +139,7 @@ def plot_loss(loss_path):
     plt.scatter(df['epoch'], df['Loss'], label='Training Loss', color='blue', s = 2) 
     plt.scatter(df['epoch'], df['Test_Loss'], label='Test Loss', color='red', s = 5) 
 
-    plt.ylim(0.4, 0.6)
+    #plt.ylim(0.4, 0.6)
     plt.title('Training and Test Loss vs Epoch')
     plt.ylabel('Loss')
     plt.xticks([epoch for epoch in df['epoch'] if epoch % 100 == 0])
@@ -145,16 +150,17 @@ def plot_loss(loss_path):
 
 train_path = 'vectorized_train01.csv'
 test_path = 'vectorized_test01.csv'
-lr = 0.0001
+lr = 0.00001
 l1_size = 256
 l2_size = 128
-batch_size = 1024
+batch_size = 256
 epoch_num = 100
 
 save_model_name = 'model'+'_'+str(l1_size)+'_'+str(l2_size)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("cuda ready?",torch.cuda.is_available())
 
-start_learning(train_path,test_path,lr,l1_size,l2_size,batch_size,epoch_num)
 
+
+start_learning(train_path,test_path,lr,l1_size,l2_size,batch_size,epoch_num)
 plot_loss(save_model_name+'_loss.csv')

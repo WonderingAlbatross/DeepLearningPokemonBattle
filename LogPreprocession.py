@@ -92,6 +92,17 @@ def count_string(directory,string,number):
             print(d,dic[d])
 
 
-check_string('./log','[from] item: ',1000)
+check_string('./log','[silent]',1000)
 #count_string('./log','Taunt',2)
+'''
+for filename in os.listdir('./log'):
+    if filename.endswith('txt'):
+        file_path = os.path.join('./log', filename)
+        battle_log_data = read_battle_log(file_path)
+        for line in battle_log_data:
+            if line[0] == 'move':
+                for word in line:
+                    if word.startswith("[from]"):
+                        print(line)
 
+'''

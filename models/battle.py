@@ -23,13 +23,12 @@ class Battle:
             for name in player.position.values():
                 if name:
                     pokemon = player.pokemon[name]
-                    if pokemon.status[0] == 'slp':
-                        pokemon.status[1] -= 1
-                    elif pokemon.status[0] == 'tox':
+                    if pokemon.status[0] == 'tox':
                         pokemon.status[1] += 1
                     for sto in pokemon.status_other:
-                        if sto in ['Taunt','Encore','confusion','Throat Chop','Heal Block','Slow Start']:
+                        if sto in ['Taunt','Encore','Throat Chop','Heal Block','Slow Start']:
                             pokemon.status_other[sto] -= 1
+
 
     def rank(self):
         return (self.player['p1'].rank+self.player['p2'].rank)/2

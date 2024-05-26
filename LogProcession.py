@@ -7,7 +7,7 @@ import pandas as pd
 import os
 import json
 
-col_order = ['battle_id', 'turn', 'total_turn', 'rank', 'weather', 'field', 'condition', 'p1_side', 
+col_order = ['battle_id', 'turn', 'total_turn', 'rank','p1_alive','p2_alive', 'weather', 'field', 'condition', 'p1_side', 
 'p1a_form', 'p1a_hp', 'p1a_ability', 'p1a_item', 'p1a_move', 'p1a_status', 'p1a_tera', 'p1a_stat_boost', 'p1a_status_other', 
 'p1b_form', 'p1b_hp', 'p1b_ability', 'p1b_item', 'p1b_move', 'p1b_status', 'p1b_tera', 'p1b_stat_boost', 'p1b_status_other', 
 'p1c_form', 'p1c_hp', 'p1c_ability', 'p1c_item', 'p1c_move', 'p1c_status', 'p1c_tera', 
@@ -119,7 +119,7 @@ def bt_switch(battle,line):
 def bt_move(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
     move = line[2]
-    if move != 'Struggle' and '[from]ability: Dancer' not in line and '[from]move: Copycat' not in line and '[from]ability: Magic Bounce' not in line:
+    if move != 'Struggle' and '[from]ability: Dancer' not in line and '[from]move: Copycat' not in line and '[from]ability: Magic Bounce' not in line and '[from]move: Metronome' not in line:
         if move in pokemon.move:
             pokemon.move[move] -= 1
         else:
@@ -132,8 +132,9 @@ def bt_damage(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
     pokemon_hp = get_hp(line[2])
     pokemon.hp = pokemon_hp
-    if line[-1] == '[from] move: Revival Blessing':
+    if '[from] move: Revival Blessing' in line:
         pokemon.status = [None,0]
+        player.alive_number += 1
         for p in player.position:
             if player.position[p] == pokemon_name:
                 player.position[p] = None
@@ -141,6 +142,9 @@ def bt_damage(battle,line):
 
 def bt_faint(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
+    player.alive_number -= 1
+    if player.alive_number < 0:
+        write_error('faint_error',line,battle.num)
     pokemon.status = ['fnt',0]
     pokemon.hp = 0
     pokemon.status_other = {}        
@@ -233,17 +237,18 @@ def bt_start(battle,line):
 
 def bt_end(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
-    if line[-1] == '[partiallytrapped]':
-        del pokemon.status_other['partiallytrapped']
-    elif '[silent]' not in line or ('[silent]' in line and line[2] in ['Throat Chop']):
-        item = line[2]
-        if item.startswith('ability: '):  
-            item = item[9:]
-        elif item.startswith('move: '):
-            item = item[6:]
-        if item not in ['Neutralizing Gas','Illusion', 'Future Sight']:
+    if not 'fnt' in pokemon.status and not 'ability: Neutralizing Gas' in line:
+        if '[partiallytrapped]' in line:
+            del pokemon.status_other['partiallytrapped']
+        else:
+            item = line[2]
+            if item.startswith('ability: '):  
+                item = item[9:] 
+            elif item.startswith('move: '):
+                item = item[6:]
             if item not in pokemon.status_other:
-                write_error('end error',line,battle.num)
+                if line[-1] != '[silent]' and item not in ['Quark Drive','Protosynthesis','Future Sight','Slow Start']:
+                    write_error('end error',line,battle.num)
             else:
                 del pokemon.status_other[item]   
 
@@ -382,6 +387,8 @@ def bt_swap(battle,line):
 def bt_endability(battle,line):
     player, position_code, pokemon_name, pokemon = seperate_pokemon_position(battle,line[1])
     pokemon.status_other['endability'] = line[2]
+    if line[2] == 'Slow Start' and 'Slow Start' in pokemon.status_other:
+        del pokemon.status_other['Slow Start']
 
 
 def line_handler(battle,line):
@@ -493,6 +500,7 @@ def get_battle_situation(battle):
         situation['condition'] = ','.join(condition)
     for pc in ["p1","p2"]:
         player = battle.player[pc]
+        situation[pc+'_alive'] = player.alive_number
         side = []
         for sd in player.side:
             side.append(sd+':'+str(player.side[sd]))
@@ -647,6 +655,7 @@ def log_process(file_path):
                 battle_end = True
                 break
             elif line[0] == '-message' and line[1].endswith('forfeited.'):
+                battle_situations.append(get_battle_situation(battle))
                 battle_end = True
             else:
                 line_handler(battle,line)

@@ -11,6 +11,7 @@ class Player:
         self.backup = set()                         #store name index
         self.team = set()                           #store name index
         self.has_teraed = False
+        self.alive_number = 4
     def show(self):
         return [self.code,self.side,self.position,self.backup]
 
